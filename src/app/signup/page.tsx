@@ -28,24 +28,33 @@ export default function SignUpPage() {
     setLoading(true);
 
     try {
-      const { data, error: signUpErr } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: fullName,
-          },
-        },
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, fullName }),
       });
 
-      if (signUpErr) throw signUpErr;
-
-      if (data.session) {
-        router.push('/projects');
-        router.refresh();
-      } else {
-        setSuccess('Registration successful! Please check your email to confirm your account or sign in.');
+      const result = await res.json();
+      if (!res.ok || result.error) {
+        throw new Error(result.error || 'Registration failed');
       }
+
+      // Automatically sign in with credentials
+      const { error: signInErr } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (signInErr) {
+        setSuccess('Account created successfully! Redirecting to sign in...');
+        setTimeout(() => {
+          router.push('/login');
+        }, 1500);
+        return;
+      }
+
+      router.push('/projects');
+      router.refresh();
     } catch (err: any) {
       setError(err.message || 'Registration failed.');
     } finally {

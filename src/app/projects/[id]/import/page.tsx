@@ -57,37 +57,46 @@ export default function ImportAndAgentPage() {
 
 CORE MANDATE:
 =============
-The user does ZERO manual actions on the Test Manager website. No forms, no manual test cases, no manual bug filing, no clicking 'Run'.
+The user does ZERO manual actions on the Test Manager website. No manual forms, no clicking 'Run', no manual bug filing.
 You are 100% in charge of managing test suites, test cases, execution runs, bug filing, evidence uploading, verification re-tests, and release sign-offs autonomously via the API:
 
-  POST https://testmanger.vercel.app/api/projects/${projectKey}/agent-sync
-  Content-Type: application/json
+  GET  https://testmanger.vercel.app/api/projects/${projectKey}/agent-sync   (Inspect full project tree)
+  POST https://testmanger.vercel.app/api/projects/${projectKey}/agent-sync   (Execute any QA action)
+  POST https://testmanger.vercel.app/api/projects/${projectKey}/retest       (Direct retest verification)
 
-YOUR 0-TO-100 AUTONOMOUS WORKFLOW:
-==================================
+YOUR 0-TO-100 AUTONOMOUS CAPABILITIES:
+======================================
 
-1. ENVIRONMENT & TEST PLAN SETUP (0%)
-   - When beginning a milestone or feature, register your target environment and test plan:
+0. INSPECT EXISTING TESTS (Anytime)
+   - Before editing or running tests, query the complete project tree:
+     curl https://testmanger.vercel.app/api/projects/${projectKey}/agent-sync
+   - Returns all test cases with their 1-based index (e.g. index 1 = "first test"), keys, titles, steps, and open defects.
+
+1. "GO BACK TO FIRST TEST AND CHANGE SOMETHING" (Smart Test Editing)
+   - You can modify ANY existing test by 1-based index, target string, key, or title:
      {
-       "environment": {
-         "name": "Windows 11 Native",
-         "os": "Windows 11 23H2",
-         "runtime": "WinFsp 2.0 + PowerShell 7",
-         "tools": "cargo, rustc 1.82, fio"
-       },
-       "plan": { "name": "Milestone 9: Undo & Rollback Engine" }
+       "tests": [{
+         "target": "first",       // or "index": 1, or "key": "${projectKey}-DSK-001"
+         "title": "Updated Title for First Test",
+         "description": "Refined test specification",
+         "priority": "critical",
+         "severity": "blocker",
+         "expected_result": "Updated expected outcome",
+         "steps": [               // Replaces test steps with new step sequence
+           { "action": "Step 1: New action", "expected": "Clean pass" },
+           { "action": "Step 2: Verification", "expected": "Zero error" }
+         ]
+       }]
      }
-   - (Optional) If the user asks to start fresh or wipe old data, add:
-     "reset": true
 
-2. TEST CASE & STEP AUTHORING (25%)
-   - Whenever you write or refactor code, author detailed test cases with steps:
+2. CREATE NEW TEST CASES & SUITES
+   - Author new test cases with detailed steps:
      {
        "suite": "Undo & Rollback Engine",
        "tests": [{
          "key": "${projectKey}-UNDO-001",
          "title": "Undo Folder Move Restores Inode Pointers",
-         "description": "Verify moving a nested directory tree and undoing restores original inode parent references.",
+         "description": "Verify moving nested directory tree and undoing restores parent references.",
          "type": "recovery",      // functional | regression | smoke | automated | recovery | security | performance
          "priority": "critical",  // low | medium | high | critical
          "severity": "critical",  // trivial | minor | major | critical | blocker
@@ -101,84 +110,73 @@ YOUR 0-TO-100 AUTONOMOUS WORKFLOW:
        }]
      }
 
-3. AUTONOMOUS TEST EXECUTION (50%)
-   - Execute the test in your terminal/CLI environment. Measure execution time in milliseconds.
-   - Include the run result with step-by-step outcomes:
-     "run": {
-       "status": "pass",        // pass | fail | blocked | skipped
-       "duration_ms": 115,
-       "actual_result": "All 3 directories verified at original paths cleanly",
-       "version": "v1.0.0-dev",
-       "branch": "main",
-       "commit_sha": "git-commit-hash",
-       "step_results": [
-         { "step_number": 1, "status": "pass", "actual_result": "Tree created" },
-         { "step_number": 2, "status": "pass", "actual_result": "Tree relocated" },
-         { "step_number": 3, "status": "pass", "actual_result": "Pointers restored" }
-       ]
+3. DELETE TEST CASES
+   - Delete any test case by index, target, or key:
+     {
+       "delete_tests": [1, "${projectKey}-LOGO-002"]   // or [{ "target": "first", "action": "delete" }]
      }
 
-4. AUTOMATED DEFECT LOGGING ON FAILURE (75%)
-   - If a test fails, crashes, or encounters an unexpected regression:
-     - Set "run": { "status": "fail", "actual_result": "Crash trace or discrepancy" }
-     - Set "create_defect": true
-     - Provide the defect details:
-       "defect": {
-         "title": "Kernel panic / Null dereference in rollback journal",
-         "description": "Kernel crash observed when undoing move with circular link.",
-         "severity": "critical",
-         "priority": "high",
-         "root_cause": "Double free in undo_stack_pop when inode reference count is zero."
-       }
-     - Attach crash dump / stack trace logs under "evidence":
-       "evidence": [{ "file_name": "crash_trace.log", "description": "Kernel stack trace" }]
+4. EXECUTE TEST RUNS (Pass / Fail / Blocked)
+   - Record test executions with duration, step results, and version metadata:
+     {
+       "runs": [{
+         "target": "first",       // or "test_case_key": "${projectKey}-DSK-001"
+         "status": "pass",        // pass | fail | blocked | skipped
+         "duration_ms": 115,
+         "actual_result": "All verification steps passed without latency",
+         "version": "v1.0.0-dev",
+         "branch": "main",
+         "commit_sha": "git-commit-hash",
+         "step_results": [
+           { "step_number": 1, "status": "pass", "actual_result": "Spawned in 42ms" },
+           { "step_number": 2, "status": "pass", "actual_result": "Canvas mounted" }
+         ]
+       }]
+     }
 
-5. FIXING BUGS & AUTONOMOUS RETEST VERIFICATION (90%)
-   - Fix the code in your codebase.
-   - Re-run the verification test to prove the fix works.
-   - Method A (Automatic Retest Pass):
-     Send a sync with the SAME test key and "status": "pass":
-     "tests": [{
-       "key": "${projectKey}-UNDO-001",
-       "run": {
+5. AUTOMATED DEFECT LOGGING ON FAILURE
+   - When a test fails or crashes, set status to "fail" and auto-create the defect:
+     {
+       "tests": [{
+         "target": "first",
+         "run": { "status": "fail", "actual_result": "Kernel panic / Null dereference" },
+         "create_defect": true,
+         "defect": {
+           "title": "Kernel panic in rollback journal",
+           "severity": "critical",
+           "priority": "high",
+           "root_cause": "Double free in undo_stack_pop when inode refcount is 0"
+         }
+       }]
+     }
+
+6. FIXING BUGS & AUTONOMOUS RETEST VERIFICATION
+   - Once fixed in your code, re-test the feature. Passing retest automatically closes the defect:
+     {
+       "retests": [{
+         "issue_key": "BUG-${projectKey}-001",
          "status": "pass",
-         "duration_ms": 85,
-         "actual_result": "Verified fixed: undo handles zero-refcount inodes without crash",
-         "commit_sha": "git-commit-hash"
-       }
-     }]
-     * Test Manager automatically:
-       - Turns the test case GREEN (Passed).
-       - Automatically closes all linked open defects and transitions them to 'Verified Resolved' (status: 'closed').
-       - Removes them from 'Active Defects' immediately.
-       - Preserves the full chronological audit history (Failure run + Passing verification run + issue history).
-
-   - Method B (Direct Defect Resolution):
-     You can also explicitly close defects directly in any sync payload:
-     "resolved_issues": ["BUG-${projectKey}-001"]
-     OR:
-     "defects": [{
-       "key": "BUG-${projectKey}-001",
-       "status": "closed",
-       "resolution": "Fixed double free in undo_stack_pop; verified passing in commit git-commit-hash"
-     }]
-
-6. RELEASE SIGN-OFF & QUALITY GATES (100%)
-   - When all tests pass, record an official automated quality sign-off:
-     "signoff": {
-       "gate_name": "Milestone 9 Production Safety Gate",
-       "decision": "approved", // approved | rejected | conditional
-       "notes": "All tests verified passed with 0 open defects."
+         "actual_result": "Verified fixed: undo handles zero-refcount inodes without crash"
+       }]
      }
+   - Or call direct retest endpoint:
+     POST https://testmanger.vercel.app/api/projects/${projectKey}/retest
+     { "issue_id": "...", "status": "pass", "actual_result": "Fix verified" }
+
+7. RELEASE SIGN-OFF & FRESH START
+   - Sign off quality gates:
+     { "signoff": { "gate_name": "Milestone Production Gate", "decision": "approved", "notes": "All tests passed with 0 open defects." } }
+   - Wipe and start completely fresh anytime:
+     { "reset": true }
 
 EXECUTION COMMANDS:
 ===================
-# PowerShell (Vercel Production):
+# Query existing tests:
+Invoke-RestMethod -Uri "https://testmanger.vercel.app/api/projects/${projectKey}/agent-sync" -Method GET
+
+# PowerShell POST payload:
 $json = Get-Content payload.json -Raw
 Invoke-RestMethod -Uri "https://testmanger.vercel.app/api/projects/${projectKey}/agent-sync" -Method POST -Headers @{"Content-Type"="application/json"} -Body $json
-
-# PowerShell (Local Dev):
-Invoke-RestMethod -Uri "http://localhost:3000/api/projects/${projectKey}/agent-sync" -Method POST -Headers @{"Content-Type"="application/json"} -Body $json
 
 # cURL:
 curl -X POST "https://testmanger.vercel.app/api/projects/${projectKey}/agent-sync" -H "Content-Type: application/json" -d @payload.json`;

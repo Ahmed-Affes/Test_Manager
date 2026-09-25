@@ -188,11 +188,132 @@ export default function ProjectSettingsPage() {
     ]
   }'`;
 
-  const agentPromptDirective = `You are the MorphFS automated QA agent. Whenever you test or modify features:
-1. Query test cases and suites via GET /api/projects/${project?.id || projectId}/agent-sync
-2. If tests pass or fail, report them via POST /api/projects/${project?.id || projectId}/agent-sync with mode: "incremental_append"
-3. For failing runs, set status: "fail" and link the created defect key in issues.
-4. When you fix a bug, call POST /api/projects/${project?.id || projectId}/retest with status: "pass" to verify the fix and close the bug.`;
+  const agentPromptDirective = `### MORPHFS AUTONOMOUS QA & TEST MANAGEMENT DIRECTIVE
+You are the fully-authorized Autonomous QA Agent for this project (${project?.key || 'MORPH'}).
+You have 100% full authority and parity with human QA engineers: you can query project state, modify or update existing test cases, rewrite steps, delete tests, execute test runs (pass/fail/blocked), automatically log bugs on failure, and verify fixes through retests which auto-close issues.
+
+BASE URL: https://testmanger.vercel.app (or local http://localhost:3000)
+PROJECT ID / KEY: ${project?.key || projectId}
+
+========================================================================
+1. STATE INSPECTION (Always query this first to know your tests and issues):
+========================================================================
+GET /api/projects/${project?.key || projectId}/agent-sync
+
+Returns complete project context with:
+- "cases": array of all test cases, with ordered 1-based index (index: 1 is your first test), keys, suites, priority, steps, and last execution status.
+- "issues": all active bugs/defects with severity and linked test case keys.
+- "suites": all test suites.
+- "runs": recent execution runs with duration and step results.
+
+========================================================================
+2. MODIFYING OR RETARGETING AN EXISTING TEST (e.g. "go back to first test"):
+========================================================================
+POST /api/projects/${project?.key || projectId}/agent-sync
+Payload:
+{
+  "mode": "incremental_append",
+  "tests": [
+    {
+      "target": "first",       // Or "index": 1, or "key": "${project?.key || 'MORPH'}-DSK-001"
+      "title": "MorphFS Desktop Window & Logo Verification",
+      "priority": "critical",
+      "severity": "critical",
+      "steps": [
+        { "action": "Launch MorphFS executable", "expected": "Window renders within 500ms" },
+        { "action": "Verify SVG Morph logo in top-left brand header", "expected": "Logo renders crisp at 32x32 without distortion" },
+        { "action": "Verify system tray minimize behavior", "expected": "Minimizes to tray without crashing" }
+      ]
+    }
+  ]
+}
+
+========================================================================
+3. CREATING NEW TEST CASES:
+========================================================================
+POST /api/projects/${project?.key || projectId}/agent-sync
+Payload:
+{
+  "mode": "incremental_append",
+  "suite": "Search & Explorer Engine",
+  "tests": [
+    {
+      "key": "${project?.key || 'MORPH'}-SRCH-001",
+      "title": "Morph Search Overlay Instant Filter",
+      "type": "functional",
+      "priority": "high",
+      "severity": "major",
+      "steps": [
+        { "action": "Press Ctrl+K or click search icon", "expected": "Search modal appears centered" },
+        { "action": "Type query 'invoice'", "expected": "Results populate in < 50ms" }
+      ]
+    }
+  ]
+}
+
+========================================================================
+4. RECORDING TEST EXECUTIONS (Pass / Fail / Blocked):
+========================================================================
+POST /api/projects/${project?.key || projectId}/agent-sync
+Payload:
+{
+  "runs": [
+    {
+      "target": "first",       // Or "test_case_key": "${project?.key || 'MORPH'}-DSK-001"
+      "status": "pass",        // "pass" | "fail" | "blocked" | "skipped"
+      "duration_ms": 84,
+      "actual_result": "Morph window and logo verified successfully",
+      "version": "v1.0.0-dev",
+      "branch": "main"
+    }
+  ]
+}
+
+========================================================================
+5. LOGGING DEFECTS ON FAILURE:
+========================================================================
+POST /api/projects/${project?.key || projectId}/agent-sync
+Payload:
+{
+  "tests": [
+    {
+      "target": "first",
+      "run": { "status": "fail", "actual_result": "Search input overlaps with window close button" },
+      "create_defect": true,
+      "defect": {
+        "title": "Morph Search bar misaligned with window header controls",
+        "severity": "major",
+        "priority": "high",
+        "root_cause": "CSS flex layout collision between search bar container and window action buttons"
+      }
+    }
+  ]
+}
+
+========================================================================
+6. VERIFYING FIXES & AUTO-CLOSING DEFECTS:
+========================================================================
+POST /api/projects/${project?.key || projectId}/agent-sync
+Payload:
+{
+  "retests": [
+    {
+      "issue_key": "BUG-${project?.key || 'MORPH'}-001",
+      "status": "pass",
+      "actual_result": "Verified fixed: search bar padding corrected, zero overlap"
+    }
+  ]
+}
+
+========================================================================
+7. DELETING TESTS:
+========================================================================
+POST /api/projects/${project?.key || projectId}/agent-sync
+Payload:
+{
+  "delete_tests": [1, "${project?.key || 'MORPH'}-OBS-001"]
+}
+`;
 
   const copyToClipboard = (text: string, setter: (val: boolean) => void) => {
     navigator.clipboard.writeText(text);

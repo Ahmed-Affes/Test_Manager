@@ -19,6 +19,9 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Backward compatibility alias
+CREATE OR REPLACE VIEW public.users AS SELECT * FROM public.profiles;
+
 -- Trigger to sync auth.users with public.profiles
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
@@ -123,8 +126,8 @@ CREATE TABLE IF NOT EXISTS public.environments (
 
 CREATE INDEX IF NOT EXISTS idx_environments_project ON public.environments(project_id);
 
--- 7. SUITES
-CREATE TABLE IF NOT EXISTS public.suites (
+-- 7. TEST SUITES
+CREATE TABLE IF NOT EXISTS public.test_suites (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     project_id UUID NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
@@ -136,14 +139,17 @@ CREATE TABLE IF NOT EXISTS public.suites (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_suites_project ON public.suites(project_id);
+CREATE INDEX IF NOT EXISTS idx_test_suites_project ON public.test_suites(project_id);
+
+-- Backward compatibility alias
+CREATE OR REPLACE VIEW public.suites AS SELECT * FROM public.test_suites;
 
 -- 8. TEST CASES
 CREATE TABLE IF NOT EXISTS public.test_cases (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     key TEXT NOT NULL,
     project_id UUID NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
-    suite_id UUID REFERENCES public.suites(id) ON DELETE SET NULL,
+    suite_id UUID REFERENCES public.test_suites(id) ON DELETE SET NULL,
     title TEXT NOT NULL,
     description TEXT,
     priority TEXT NOT NULL DEFAULT 'medium' CHECK (priority IN ('critical', 'high', 'medium', 'low')),
@@ -393,6 +399,20 @@ CREATE TABLE IF NOT EXISTS public.notifications (
 
 CREATE INDEX IF NOT EXISTS idx_notifications_user ON public.notifications(user_id, is_read);
 
+-- 21. REPORT SIGNOFFS
+CREATE TABLE IF NOT EXISTS public.report_signoffs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id UUID NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+    role TEXT NOT NULL,
+    decision TEXT NOT NULL CHECK (decision IN ('approved', 'rejected', 'conditional')),
+    notes TEXT,
+    signed_at TIMESTAMPTZ DEFAULT NOW(),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_report_signoffs_project ON public.report_signoffs(project_id);
+
 -- ==============================================================================
 -- ROW LEVEL SECURITY (RLS) POLICIES
 -- ==============================================================================
@@ -403,7 +423,7 @@ ALTER TABLE public.projects ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.project_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.project_invitations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.environments ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.suites ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.test_suites ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.test_cases ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.test_steps ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.test_runs ENABLE ROW LEVEL SECURITY;
@@ -420,6 +440,7 @@ ALTER TABLE public.tags ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.test_case_tags ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.report_signoffs ENABLE ROW LEVEL SECURITY;
 
 -- 1. PROFILES POLICIES
 CREATE POLICY "Public profiles viewable by authenticated users"
@@ -521,7 +542,7 @@ DO $$
 DECLARE
     tbl text;
 BEGIN
-    FOR tbl IN SELECT unnest(ARRAY['environments', 'suites', 'test_plans', 'milestones', 'tags', 'test_sessions'])
+    FOR tbl IN SELECT unnest(ARRAY['environments', 'test_suites', 'test_plans', 'milestones', 'tags', 'test_sessions'])
     LOOP
         EXECUTE format('
             CREATE POLICY "%1$s_select_member" ON public.%1$s
@@ -691,7 +712,16 @@ CREATE POLICY "notifications_user_access" ON public.notifications
     USING (user_id = auth.uid())
     WITH CHECK (user_id = auth.uid());
 
--- 13. STORAGE BUCKET FOR EVIDENCE
+-- 13. REPORT SIGNOFFS POLICIES
+CREATE POLICY "report_signoffs_select" ON public.report_signoffs
+    FOR SELECT TO authenticated
+    USING (public.is_project_member(project_id));
+
+CREATE POLICY "report_signoffs_insert" ON public.report_signoffs
+    FOR INSERT TO authenticated
+    WITH CHECK (public.is_project_member(project_id));
+
+-- 14. STORAGE BUCKET FOR EVIDENCE
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES (
     'evidence',

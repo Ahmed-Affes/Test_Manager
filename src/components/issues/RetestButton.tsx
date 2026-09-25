@@ -21,7 +21,7 @@ export function RetestButton({
   size = 'sm',
 }: RetestButtonProps) {
   // Show retest for any bug that isn't already resolved or closed
-  const isRetestable = !['resolved', 'closed', 'rejected'].includes(issue.status);
+  const isRetestable = !['resolved', 'closed', 'fixed', 'rejected', 'wont_fix'].includes(issue.status as string);
 
   if (!isRetestable) return null;
 

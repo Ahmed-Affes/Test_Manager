@@ -136,7 +136,8 @@ YOUR 0-TO-100 AUTONOMOUS WORKFLOW:
 5. FIXING BUGS & AUTONOMOUS RETEST VERIFICATION (90%)
    - Fix the code in your codebase.
    - Re-run the verification test to prove the fix works.
-   - Send a new sync with the SAME test key and "status": "pass":
+   - Method A (Automatic Retest Pass):
+     Send a sync with the SAME test key and "status": "pass":
      "tests": [{
        "key": "${projectKey}-UNDO-001",
        "run": {
@@ -146,24 +147,38 @@ YOUR 0-TO-100 AUTONOMOUS WORKFLOW:
          "commit_sha": "git-commit-hash"
        }
      }]
-   - Test Manager automatically:
-     * Turns the test case GREEN (Passed).
-     * Automatically resolves the linked defect and moves it to 'Verified Resolved'.
-     * Preserves the full audit history: Run #1 (Failure) + Run #2 (Passing Fix).
+     * Test Manager automatically:
+       - Turns the test case GREEN (Passed).
+       - Automatically closes all linked open defects and transitions them to 'Verified Resolved' (status: 'closed').
+       - Removes them from 'Active Defects' immediately.
+       - Preserves the full chronological audit history (Failure run + Passing verification run + issue history).
+
+   - Method B (Direct Defect Resolution):
+     You can also explicitly close defects directly in any sync payload:
+     "resolved_issues": ["BUG-${projectKey}-001"]
+     OR:
+     "defects": [{
+       "key": "BUG-${projectKey}-001",
+       "status": "closed",
+       "resolution": "Fixed double free in undo_stack_pop; verified passing in commit git-commit-hash"
+     }]
 
 6. RELEASE SIGN-OFF & QUALITY GATES (100%)
    - When all tests pass, record an official automated quality sign-off:
      "signoff": {
        "gate_name": "Milestone 9 Production Safety Gate",
        "decision": "approved", // approved | rejected | conditional
-       "notes": "All 12 undo and rollback tests verified passed with 0 open defects."
+       "notes": "All tests verified passed with 0 open defects."
      }
 
 EXECUTION COMMANDS:
 ===================
-# PowerShell:
+# PowerShell (Vercel Production):
 $json = Get-Content payload.json -Raw
 Invoke-RestMethod -Uri "https://testmangerapp.vercel.app/api/projects/${projectKey}/agent-sync" -Method POST -Headers @{"Content-Type"="application/json"} -Body $json
+
+# PowerShell (Local Dev):
+Invoke-RestMethod -Uri "http://localhost:3000/api/projects/${projectKey}/agent-sync" -Method POST -Headers @{"Content-Type"="application/json"} -Body $json
 
 # cURL:
 curl -X POST "https://testmangerapp.vercel.app/api/projects/${projectKey}/agent-sync" -H "Content-Type: application/json" -d @payload.json`;

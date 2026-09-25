@@ -169,13 +169,18 @@ export default function IssuesPage() {
     }
   };
 
+  // Helper: check if issue is closed/resolved/fixed
+  const isIssueClosed = (status: string) => status === 'closed' || status === 'resolved' || status === 'fixed';
+
   // KPIs
   const totalIssues = issues.length;
-  const openIssues = issues.filter((i) => i.status === 'open' || i.status === 'in_progress').length;
-  const blockerIssues = issues.filter(
-    (i) => (i.severity === 'blocker' || i.severity === 'critical') && i.status !== 'resolved' && i.status !== 'closed'
+  const openIssues = issues.filter(
+    (i) => !isIssueClosed(i.status) && i.status !== 'rejected' && i.status !== 'wont_fix'
   ).length;
-  const resolvedIssues = issues.filter((i) => i.status === 'resolved' || i.status === 'closed').length;
+  const blockerIssues = issues.filter(
+    (i) => (i.severity === 'blocker' || i.severity === 'critical') && !isIssueClosed(i.status) && i.status !== 'rejected' && i.status !== 'wont_fix'
+  ).length;
+  const resolvedIssues = issues.filter((i) => isIssueClosed(i.status)).length;
 
   const filteredIssues = issues.filter((i) => {
     const matchesSearch =
@@ -183,13 +188,14 @@ export default function IssuesPage() {
       i.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (i.root_cause && i.root_cause.toLowerCase().includes(searchQuery.toLowerCase()));
 
+    const isClosed = isIssueClosed(i.status);
     const matchesStatus =
       statusFilter === 'all'
         ? true
         : statusFilter === 'active'
-        ? i.status === 'open' || i.status === 'in_progress'
+        ? !isClosed && i.status !== 'rejected' && i.status !== 'wont_fix'
         : statusFilter === 'resolved'
-        ? i.status === 'resolved' || i.status === 'closed'
+        ? isClosed
         : i.status === statusFilter;
 
     const matchesSeverity = severityFilter === 'all' || i.severity === severityFilter;
@@ -423,14 +429,14 @@ export default function IssuesPage() {
                   <td className="p-3">
                     <span
                       className={`px-2 py-0.5 rounded text-[10px] uppercase font-medium ${
-                        issue.status === 'resolved' || issue.status === 'closed'
-                          ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                        isIssueClosed(issue.status)
+                          ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
                           : issue.status === 'in_progress'
-                          ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
-                          : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                          ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20'
+                          : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
                       }`}
                     >
-                      {issue.status}
+                      {issue.status === 'closed' ? 'Closed / Resolved' : issue.status}
                     </span>
                   </td>
 
@@ -450,7 +456,7 @@ export default function IssuesPage() {
                   </td>
 
                   <td className="p-3 text-right font-sans">
-                    {issue.status === 'resolved' || issue.status === 'closed' ? (
+                    {isIssueClosed(issue.status) ? (
                       <span className="inline-flex items-center gap-1 text-[11px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold justify-end">
                         <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
                         Verified

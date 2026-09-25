@@ -471,21 +471,33 @@ export async function POST(
               if (runStatus === 'pass') {
                 const { data: openBugs } = await admin
                   .from('issues')
-                  .select('id, issue_key')
+                  .select('id, issue_key, status')
                   .eq('test_case_id', caseId)
-                  .in('status', ['open', 'in_progress']);
+                  .in('status', ['open', 'investigating', 'in_progress', 'retesting', 'fixed']);
 
                 if (openBugs && openBugs.length > 0) {
                   for (const ob of openBugs) {
-                    await admin
+                    const passRes = `Verified resolved: Test passed in Run #${testRun.run_number || 'Latest'} (${item.run.commit_sha || item.run.version || 'AI Fix'})`;
+                    const { error: updateErr } = await admin
                       .from('issues')
                       .update({
-                        status: 'resolved',
-                        resolution: `Verified resolved: Test passed in Run #${testRun.run_number || 'Latest'} (${item.run.commit_sha || item.run.version || 'AI Fix'})`,
+                        status: 'closed', // 'closed' satisfies PostgreSQL check constraint
+                        resolution: passRes,
                         updated_at: new Date().toISOString(),
                       })
                       .eq('id', ob.id);
-                    summary.resolved_issues = (summary.resolved_issues || 0) + 1;
+
+                    if (!updateErr) {
+                      summary.resolved_issues = (summary.resolved_issues || 0) + 1;
+                      await admin.from('issue_history').insert({
+                        issue_id: ob.id,
+                        old_status: ob.status || 'open',
+                        new_status: 'closed',
+                        comment: passRes,
+                      });
+                    } else {
+                      console.error('Failed to update issue to closed during pass sync:', updateErr);
+                    }
                   }
                 }
               }
@@ -503,6 +515,12 @@ export async function POST(
       for (let idx = 0; idx < allStandaloneIssues.length; idx++) {
         const iss = allStandaloneIssues[idx];
         const issKey = iss.key || iss.issue_key || `BUG-${project.key}-${Date.now().toString().slice(-4)}${idx}`;
+        let normalizedStatus = (iss.status || 'open').toLowerCase();
+        if (normalizedStatus === 'resolved') normalizedStatus = 'closed';
+        if (!['open', 'investigating', 'in_progress', 'fixed', 'retesting', 'closed', 'rejected', 'wont_fix'].includes(normalizedStatus)) {
+          normalizedStatus = 'open';
+        }
+
         const { data: createdIssue } = await admin.from('issues').upsert(
           {
             project_id: project.id,
@@ -511,17 +529,29 @@ export async function POST(
             description: iss.description || null,
             severity: iss.severity || 'major',
             priority: iss.priority || 'medium',
-            status: iss.status || 'open',
+            status: normalizedStatus,
             root_cause: iss.root_cause || null,
             fix_description: iss.fix_description || null,
             related_commit: iss.related_commit || null,
-            resolution: iss.resolution || null,
+            resolution: iss.resolution || (normalizedStatus === 'closed' ? 'Verified resolved' : null),
+            updated_at: new Date().toISOString(),
           },
           { onConflict: 'project_id,issue_key' }
-        ).select('id').single();
+        ).select('id, status').single();
 
         if (createdIssue) {
-          summary.created_issues++;
+          if (normalizedStatus === 'closed') {
+            summary.resolved_issues = (summary.resolved_issues || 0) + 1;
+            await admin.from('issue_history').insert({
+              issue_id: createdIssue.id,
+              old_status: 'open',
+              new_status: 'closed',
+              comment: iss.resolution || 'Resolved by AI agent',
+            });
+          } else {
+            summary.created_issues++;
+          }
+
           if (Array.isArray(iss.evidence)) {
             for (const ev of iss.evidence) {
               await admin.from('evidence').insert({
@@ -535,6 +565,43 @@ export async function POST(
               });
               summary.attached_evidence++;
             }
+          }
+        }
+      }
+    }
+
+    // 7b. Process explicit resolved_issues array (e.g. ["BUG-MORPH-001", "uuid..."])
+    const resolvedKeysOrIds: string[] = Array.isArray(body.resolved_issues)
+      ? body.resolved_issues
+      : Array.isArray(body.resolve_issues)
+      ? body.resolve_issues
+      : [];
+
+    if (resolvedKeysOrIds.length > 0) {
+      for (const item of resolvedKeysOrIds) {
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item);
+        let q = admin.from('issues').update({
+          status: 'closed',
+          resolution: 'Marked resolved by AI Agent sync',
+          updated_at: new Date().toISOString(),
+        }).eq('project_id', project.id);
+
+        if (isUuid) {
+          q = q.eq('id', item);
+        } else {
+          q = q.ilike('issue_key', item);
+        }
+
+        const { data: updated, error: resErr } = await q.select('id, status');
+        if (!resErr && updated && updated.length > 0) {
+          for (const u of updated) {
+            summary.resolved_issues = (summary.resolved_issues || 0) + 1;
+            await admin.from('issue_history').insert({
+              issue_id: u.id,
+              old_status: 'open',
+              new_status: 'closed',
+              comment: 'Explicitly marked resolved by AI Agent sync',
+            });
           }
         }
       }

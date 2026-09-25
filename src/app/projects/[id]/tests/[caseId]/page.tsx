@@ -53,10 +53,11 @@ export default function TestCaseDetailPage() {
   // Active tab
   const [activeTab, setActiveTab] = React.useState<'steps' | 'history' | 'issues' | 'evidence'>('steps');
 
-  // Modals
+  // Modals & Active Retest
   const [isRunnerOpen, setIsRunnerOpen] = React.useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
   const [isIssueModalOpen, setIsIssueModalOpen] = React.useState(false);
+  const [retestingIssue, setRetestingIssue] = React.useState<Issue | null>(null);
 
   const fetchCaseDetails = React.useCallback(async () => {
     setLoading(true);
@@ -154,6 +155,7 @@ export default function TestCaseDetailPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          issue_id: retestingIssue?.id || null,
           test_case_id: resolvedCaseUuid,
           status: runData.status,
           duration_ms: runData.duration_ms,
@@ -174,6 +176,7 @@ export default function TestCaseDetailPage() {
     } catch (err) {
       console.error('Save run error:', err);
     } finally {
+      setRetestingIssue(null);
       await fetchCaseDetails();
       setActiveTab('history');
     }
@@ -642,20 +645,38 @@ export default function TestCaseDetailPage() {
                         {issue.severity}
                       </td>
                       <td className="p-3">
-                        <span className="px-2 py-0.5 rounded font-mono text-[10px] uppercase bg-zinc-800 text-zinc-300">
-                          {issue.status}
+                        <span
+                          className={`px-2 py-0.5 rounded font-mono text-[10px] uppercase font-medium ${
+                            issue.status === 'closed' || issue.status === 'fixed' || (issue.status as string) === 'resolved'
+                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                              : issue.status === 'in_progress'
+                              ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                              : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                          }`}
+                        >
+                          {issue.status === 'closed' ? 'Closed / Resolved' : issue.status}
                         </span>
                       </td>
                       <td className="p-3 font-mono text-zinc-400 text-[11px]">
                         {issue.related_commit || '—'}
                       </td>
                       <td className="p-3 text-right">
-                        <RetestButton
-                          issue={issue}
-                          testCase={testCase}
-                          onTriggerRetest={() => setIsRunnerOpen(true)}
-                          size="xs"
-                        />
+                        {issue.status === 'closed' || issue.status === 'fixed' || (issue.status as string) === 'resolved' ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-mono text-emerald-400 font-semibold justify-end">
+                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                            Verified
+                          </span>
+                        ) : (
+                          <RetestButton
+                            issue={issue}
+                            testCase={testCase}
+                            onTriggerRetest={(iss) => {
+                              setRetestingIssue(iss);
+                              setIsRunnerOpen(true);
+                            }}
+                            size="xs"
+                          />
+                        )}
                       </td>
                     </tr>
                   ))}

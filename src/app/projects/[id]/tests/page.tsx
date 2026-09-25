@@ -49,6 +49,13 @@ export default function TestCasesPage() {
   const fetchData = React.useCallback(async () => {
     setLoading(true);
     try {
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(projectId);
+      let pId = projectId;
+      if (!isUuid) {
+        const { data: p } = await supabase.from('projects').select('id').ilike('key', projectId).single();
+        if (p) pId = p.id;
+      }
+
       // 1. Fetch test cases with their steps, suite, and latest run
       const { data: casesData, error: casesErr } = await supabase
         .from('test_cases')
@@ -58,7 +65,7 @@ export default function TestCasesPage() {
           steps:test_steps(*),
           test_runs:test_runs(id, run_number, status, duration_ms, created_at)
         `)
-        .eq('project_id', projectId)
+        .eq('project_id', pId)
         .order('created_at', { ascending: false });
 
       if (casesErr) console.error('Fetch cases error:', casesErr);
@@ -67,14 +74,14 @@ export default function TestCasesPage() {
       const { data: suitesData } = await supabase
         .from('test_suites')
         .select('*')
-        .eq('project_id', projectId)
+        .eq('project_id', pId)
         .order('name');
 
       // 3. Fetch environments
       const { data: envsData } = await supabase
         .from('environments')
         .select('*')
-        .eq('project_id', projectId)
+        .eq('project_id', pId)
         .order('name');
 
       setTestCases(casesData || []);
@@ -99,29 +106,48 @@ export default function TestCasesPage() {
       data: { user },
     } = await supabase.auth.getUser();
 
-    // Fetch project key to generate sequential test case key
-    const { data: proj } = await supabase
-      .from('projects')
-      .select('key')
-      .eq('id', projectId)
-      .single();
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(projectId);
+    let resolvedProjectId = projectId;
+    let projectKey = 'TEST';
 
-    const projectKey = proj?.key || 'TEST';
+    if (!isUuid) {
+      const { data: proj } = await supabase
+        .from('projects')
+        .select('id, key')
+        .ilike('key', projectId)
+        .single();
+      if (proj) {
+        resolvedProjectId = proj.id;
+        projectKey = proj.key;
+      }
+    } else {
+      const { data: proj } = await supabase
+        .from('projects')
+        .select('key')
+        .eq('id', projectId)
+        .single();
+      if (proj) projectKey = proj.key;
+    }
 
     // Count existing test cases to assign next key
     const { count } = await supabase
       .from('test_cases')
       .select('*', { count: 'exact', head: true })
-      .eq('project_id', projectId);
+      .eq('project_id', resolvedProjectId);
 
     const nextNumber = (count || 0) + 1;
     const testKey = `${projectKey}-${nextNumber}`;
+
+    const overallExpected =
+      caseData.expected_result ||
+      caseData.steps?.[0]?.expected_result ||
+      'All execution steps pass with zero defects';
 
     // 1. Insert test case
     const { data: newCase, error: caseErr } = await supabase
       .from('test_cases')
       .insert({
-        project_id: projectId,
+        project_id: resolvedProjectId,
         suite_id: caseData.suite_id || null,
         key: testKey,
         title: caseData.title,
@@ -132,6 +158,7 @@ export default function TestCasesPage() {
         status: caseData.status,
         preconditions: caseData.preconditions || null,
         test_data: caseData.test_data || null,
+        expected_result: overallExpected,
         created_by: user?.id,
       })
       .select()

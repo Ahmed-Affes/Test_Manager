@@ -70,6 +70,9 @@ export function TestCaseModal({
     initialData?.preconditions || ''
   );
   const [testData, setTestData] = React.useState(initialData?.test_data || '');
+  const [expectedResult, setExpectedResult] = React.useState(
+    initialData?.expected_result || 'All execution steps pass with zero defects'
+  );
 
   const [steps, setSteps] = React.useState<StepDraft[]>([
     {
@@ -93,6 +96,7 @@ export function TestCaseModal({
       setStatus(initialData.status || 'active');
       setPreconditions(initialData.preconditions || '');
       setTestData(initialData.test_data || '');
+      setExpectedResult(initialData.expected_result || 'All execution steps pass with zero defects');
     }
   }, [initialData]);
 
@@ -158,6 +162,7 @@ export function TestCaseModal({
         status,
         preconditions: preconditions.trim() || null,
         test_data: testData.trim() || null,
+        expected_result: expectedResult.trim() || steps[0]?.expected_result || 'All execution steps pass with zero defects',
         steps: steps.filter((s) => s.action.trim().length > 0),
       });
 
@@ -354,6 +359,21 @@ export function TestCaseModal({
                 className="w-full rounded-md border border-zinc-800 bg-zinc-900 p-2.5 text-xs text-zinc-200 placeholder-zinc-500 focus:border-zinc-600 focus:outline-none"
               />
             </div>
+          </div>
+
+          {/* Overall Expected Result */}
+          <div>
+            <label className="block text-xs font-medium text-zinc-300 mb-1">
+              Overall Expected Result <span className="text-rose-400">*</span>
+            </label>
+            <input
+              type="text"
+              value={expectedResult}
+              onChange={(e) => setExpectedResult(e.target.value)}
+              placeholder="e.g. All filesystem metadata invariants maintained and system mounts cleanly"
+              className="w-full rounded-md border border-zinc-800 bg-zinc-900 p-2.5 text-xs text-zinc-200 placeholder-zinc-500 focus:border-zinc-600 focus:outline-none"
+              required
+            />
           </div>
 
           {/* Step-by-Step Procedure */}

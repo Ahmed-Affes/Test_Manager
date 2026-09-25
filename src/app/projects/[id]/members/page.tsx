@@ -158,8 +158,8 @@ export default function MembersPage() {
                     m.role === 'owner'
                       ? 'destructive'
                       : m.role === 'admin'
-                      ? 'secondary'
-                      : 'outline'
+                        ? 'secondary'
+                        : 'outline'
                   }
                   className="uppercase text-[10px] tracking-wider font-semibold"
                 >

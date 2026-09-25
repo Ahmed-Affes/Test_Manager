@@ -51,10 +51,21 @@ export default function ImportAndAgentPage() {
     setTimeout(() => setCopiedSection(null), 2000);
   };
 
-  // Sample morphFS test suite
+  // Comprehensive sample morphFS test ecosystem covering all features
   const sampleMorphFSPayload = {
     suite: 'morphFS Core & VFS Layer',
     suite_description: 'Automated verification for morphFS inode operations, crash recovery, and VFS compliance',
+    environment: {
+      name: 'morphFS Linux 6.12 (QEMU KVM)',
+      os: 'Ubuntu 24.04 (Kernel 6.12.5-morphfs)',
+      cpu: '16 vCPU AMD EPYC',
+      ram: '32 GB RAM',
+      runtime: 'QEMU KVM + GDB Stub',
+    },
+    plan: {
+      name: 'v1.0 Milestone Release Verification',
+      description: 'Core filesystem stability, crash consistency, and POSIX compliance gating',
+    },
     tests: [
       {
         key: `${projectKey}-001`,
@@ -63,6 +74,8 @@ export default function ImportAndAgentPage() {
         type: 'recovery',
         severity: 'critical',
         priority: 'critical',
+        preconditions: 'morphFS module loaded; root partition mounted with ordered journaling',
+        expected_result: 'Zero orphan inodes; fsck reports clean state with all metadata intact',
         steps: [
           { action: 'Mount morphFS with journal=ordered', expected: 'Filesystem mounts in read-write mode' },
           { action: 'Start multi-threaded writes to 500 files', expected: 'Transactions queued in journal buffer' },
@@ -73,6 +86,9 @@ export default function ImportAndAgentPage() {
           status: 'pass',
           duration_ms: 1840,
           actual_result: 'Journal replayed in 1.84s. All 500 file descriptors intact with valid checksums.',
+          version: 'v1.0.0-rc1',
+          branch: 'main',
+          commit_sha: 'a1b2c3d4e5',
         },
       },
       {
@@ -82,6 +98,8 @@ export default function ImportAndAgentPage() {
         type: 'stress',
         severity: 'major',
         priority: 'high',
+        preconditions: '100 worker threads initialized in user space',
+        expected_result: '10,000 directories created without deadlock or lock contention panic',
         steps: [
           { action: 'Spawn 100 POSIX threads calling mkdir concurrently', expected: 'Directory mutex scales with zero deadlocks' },
           { action: 'Verify all directory entries via readdir()', expected: 'All 10,000 directories listed without collision' },
@@ -90,6 +108,8 @@ export default function ImportAndAgentPage() {
           status: 'pass',
           duration_ms: 2450,
           actual_result: '10,000 subdirectories created across 100 threads in 2.45s.',
+          version: 'v1.0.0-rc1',
+          branch: 'main',
         },
       },
       {
@@ -97,20 +117,37 @@ export default function ImportAndAgentPage() {
         title: 'Extended Attributes (xattr) Security Context',
         description: 'Validate POSIX ACLs and security.selinux attributes preservation across snapshot restore.',
         type: 'security',
-        severity: 'high',
-        priority: 'high',
+        severity: 'critical',
+        priority: 'critical',
+        preconditions: 'SELinux enabled in permissive mode; xattr partition enabled',
+        expected_result: 'xattr integrity verified across COW snapshot tree',
         steps: [
           { action: 'Set security.selinux attribute on /test/sec.txt', expected: 'Attribute stored in extended inode header' },
           { action: 'Take COW snapshot snap_001', expected: 'COW refcount incremented' },
           { action: 'Read xattr from snap_001', expected: 'Attribute returns matching hash' },
         ],
         run: {
-          status: 'pass',
-          duration_ms: 420,
-          actual_result: 'xattr integrity verified across COW snapshot tree.',
+          status: 'fail',
+          duration_ms: 680,
+          actual_result: 'Kernel returned EINVAL: Extended attribute hash mismatch on snapshot boundary.',
+          version: 'v1.0.0-rc1',
+          branch: 'main',
+        },
+        create_defect: true,
+        defect: {
+          title: '[morphFS Kernel Bug] xattr hash mismatch on COW snapshot restore',
+          description: 'Extended attributes are corrupted when reading from a read-only snapshot boundary.',
+          severity: 'critical',
+          priority: 'critical',
+          root_cause: 'Missing inode offset calculation in snapshot lookup function.',
         },
       },
     ],
+    signoff: {
+      decision: 'conditional',
+      role: 'Automated AI Verification Gate',
+      notes: 'Crash recovery and concurrency suites passed. Release blocked until xattr COW defect is resolved.',
+    },
   };
 
   const handlePushSampleTests = async () => {
@@ -126,7 +163,7 @@ export default function ImportAndAgentPage() {
       if (!res.ok) throw new Error(data.error || 'Failed to sync tests');
 
       setSampleSuccess(
-        `Success! Created ${data.summary?.created_cases} test cases and ${data.summary?.created_runs} verified runs in suite "${sampleMorphFSPayload.suite}".`
+        `Full Ecosystem Synchronized! Populated Test Suites, Target Environment, Test Cases, Execution History, Defect Issue, Test Plan, and Quality Sign-Off.`
       );
     } catch (err: any) {
       alert(err.message);
@@ -143,28 +180,49 @@ Header: Content-Type: application/json
 
 Payload Format:
 {
-  "suite": "Test Suite Name",
-  "suite_description": "What this suite verifies",
+  "suite": "morphFS Core & VFS Layer",
+  "suite_description": "Verification of inode allocation and crash consistency",
+  "environment": {
+    "name": "morphFS Linux 6.12 (QEMU KVM)",
+    "os": "Ubuntu 24.04 (Kernel 6.12)",
+    "runtime": "QEMU KVM"
+  },
+  "plan": {
+    "name": "v1.0 Milestone Release",
+    "description": "Core filesystem stability gating"
+  },
   "tests": [
     {
       "key": "${projectKey}-001",
-      "title": "Descriptive Test Title",
-      "description": "What the test validates",
-      "type": "functional", // functional | regression | recovery | security | performance
-      "severity": "critical", // blocker | critical | major | minor
+      "title": "Crash Consistency & Journal Replay",
+      "description": "Verify filesystem integrity after sudden power interruption.",
+      "severity": "critical",
+      "priority": "critical",
+      "type": "recovery",
+      "preconditions": "Ordered journaling enabled",
+      "expected_result": "Clean journal replay with zero orphan inodes",
       "steps": [
-        { "action": "Action performed", "expected": "Expected outcome" }
+        { "action": "Mount with journal=ordered", "expected": "Filesystem mounts rw" },
+        { "action": "Trigger kernel fault", "expected": "Dirty blocks written to circular buffer" },
+        { "action": "Remount and replay", "expected": "Zero orphan inodes; clean state" }
       ],
       "run": {
         "status": "pass", // pass | fail | blocked | skipped
-        "duration_ms": 150,
-        "actual_result": "Detailed logs or execution outcome"
+        "duration_ms": 1420,
+        "actual_result": "Replay completed in 1.42s with zero orphan inodes.",
+        "version": "v1.0.0",
+        "branch": "main"
       }
     }
-  ]
+  ],
+  "signoff": {
+    "decision": "approved", // approved | rejected | conditional
+    "role": "Automated AI Verification Gate",
+    "notes": "All verification criteria met."
+  }
 }
 
-Ensure all failed executions include detailed stack traces and steps so defects can be automatically tracked.`;
+Ensure all failed executions automatically create defects and attach execution logs.`;
 
   const curlSnippet = `curl -X POST https://testmanger.vercel.app/api/projects/${projectKey}/agent-sync \\
   -H "Content-Type: application/json" \\

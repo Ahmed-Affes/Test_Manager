@@ -22,12 +22,13 @@ export default async function ProjectLayout({ children, params }: ProjectLayoutP
     redirect(`/login?redirectTo=/projects/${id}`);
   }
 
-  // Fetch current project
-  const { data: project, error: projectError } = await supabase
-    .from('projects')
-    .select('*')
-    .eq('id', id)
-    .single();
+  // Fetch current project by UUID id or Project Key
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+  const projectQuery = isUuid
+    ? supabase.from('projects').select('*').eq('id', id)
+    : supabase.from('projects').select('*').ilike('key', id);
+
+  const { data: project, error: projectError } = await projectQuery.single();
 
   if (projectError || !project) {
     notFound();
@@ -43,7 +44,7 @@ export default async function ProjectLayout({ children, params }: ProjectLayoutP
   const { data: memberData } = await supabase
     .from('project_members')
     .select('role')
-    .eq('project_id', id)
+    .eq('project_id', project.id)
     .eq('user_id', user.id)
     .single();
 

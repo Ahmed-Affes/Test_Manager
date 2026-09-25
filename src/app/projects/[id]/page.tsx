@@ -33,30 +33,38 @@ export default async function ProjectOverviewPage({ params }: ProjectOverviewPro
   const { id } = await params;
   const supabase = await createClient();
 
+  // Resolve project id if a key was provided
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+  let resolvedId = id;
+  if (!isUuid) {
+    const { data: proj } = await supabase.from('projects').select('id').ilike('key', id).maybeSingle();
+    if (proj?.id) resolvedId = proj.id;
+  }
+
   // 1. Fetch test cases count and cases
   const { data: testCases } = await supabase
     .from('test_cases')
     .select('id, key, title, status, severity, created_at')
-    .eq('project_id', id);
+    .eq('project_id', resolvedId);
 
   // 2. Fetch test runs
   const { data: testRuns } = await supabase
     .from('test_runs')
     .select('id, test_case_id, status, duration_ms, created_at, run_number')
-    .eq('project_id', id)
+    .eq('project_id', resolvedId)
     .order('created_at', { ascending: false });
 
   // 3. Fetch open issues
   const { data: issues } = await supabase
     .from('issues')
     .select('id, issue_key, title, severity, priority, status, created_at')
-    .eq('project_id', id);
+    .eq('project_id', resolvedId);
 
   // 4. Fetch audit logs
   const { data: rawAuditLogs } = await supabase
     .from('audit_logs')
     .select('*, actor:users(id, email, full_name)')
-    .eq('project_id', id)
+    .eq('project_id', resolvedId)
     .order('created_at', { ascending: false })
     .limit(10);
 
@@ -141,21 +149,21 @@ export default async function ProjectOverviewPage({ params }: ProjectOverviewPro
         </div>
 
         <div className="flex items-center gap-2">
-          <Link href={`/projects/${id}/tests`}>
+          <Link href={`/projects/${resolvedId}/tests`}>
             <Button size="xs" variant="outline" className="gap-1.5">
               <CheckSquare className="h-3.5 w-3.5" />
               Manage Tests
             </Button>
           </Link>
 
-          <Link href={`/projects/${id}/import`}>
+          <Link href={`/projects/${resolvedId}/import`}>
             <Button size="xs" variant="outline" className="gap-1.5">
               <FileCode className="h-3.5 w-3.5" />
               CI Import
             </Button>
           </Link>
 
-          <Link href={`/projects/${id}/reports`}>
+          <Link href={`/projects/${resolvedId}/reports`}>
             <Button size="xs" variant="primary" className="gap-1.5">
               <FileText className="h-3.5 w-3.5" />
               Verification Report
@@ -213,8 +221,8 @@ export default async function ProjectOverviewPage({ params }: ProjectOverviewPro
 
       {/* Bottom Section: Flaky Tests Detection & Live Audit Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <FlakyTestsTable projectId={id} flakyTests={flakyList} />
-        <RecentActivityFeed projectId={id} auditLogs={auditLogs} />
+        <FlakyTestsTable projectId={resolvedId} flakyTests={flakyList} />
+        <RecentActivityFeed projectId={resolvedId} auditLogs={auditLogs} />
       </div>
     </div>
   );

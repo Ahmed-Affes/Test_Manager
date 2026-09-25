@@ -61,7 +61,7 @@ export function FlakyTestsTable({
                   <tr key={t.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/40">
                     <td className="py-2.5 pr-2">
                       <Link
-                        href={`/projects/${projectId}/cases/${t.id}`}
+                        href={`/projects/${projectId}/tests/${t.id}`}
                         className="font-mono text-blue-600 dark:text-blue-400 hover:underline font-semibold block"
                       >
                         {t.key}
@@ -108,7 +108,7 @@ export function FlakyTestsTable({
                     </td>
 
                     <td className="py-2.5 text-right">
-                      <Link href={`/projects/${projectId}/cases/${t.id}`}>
+                      <Link href={`/projects/${projectId}/tests/${t.id}`}>
                         <Button size="xs" variant="ghost" className="gap-1">
                           Inspect
                           <ArrowRight className="h-3 w-3" />

@@ -1,0 +1,367 @@
+'use client';
+
+import * as React from 'react';
+import { useParams } from 'next/navigation';
+import {
+  Bot,
+  Terminal,
+  UploadCloud,
+  CheckCircle2,
+  Copy,
+  Check,
+  FileCode,
+  Sparkles,
+  Play,
+  Layers,
+  ArrowRight,
+} from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { JunitImportModal } from '@/components/automated/JunitImportModal';
+
+export default function ImportAndAgentPage() {
+  const params = useParams();
+  const projectId = params.id as string;
+  const supabase = createClient();
+
+  const [projectKey, setProjectKey] = React.useState('TM-101');
+  const [copiedSection, setCopiedSection] = React.useState<string | null>(null);
+  const [isImportModalOpen, setIsImportModalOpen] = React.useState(false);
+  const [syncingSample, setSyncingSample] = React.useState(false);
+  const [sampleSuccess, setSampleSuccess] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    async function loadProj() {
+      if (!projectId) return;
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(projectId);
+      const query = isUuid
+        ? supabase.from('projects').select('key').eq('id', projectId)
+        : supabase.from('projects').select('key').ilike('key', projectId);
+      const { data } = await query.single();
+      if (data?.key) setProjectKey(data.key);
+    }
+    loadProj();
+  }, [projectId, supabase]);
+
+  const copyToClipboard = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedSection(id);
+    setTimeout(() => setCopiedSection(null), 2000);
+  };
+
+  // Sample morphFS test suite
+  const sampleMorphFSPayload = {
+    suite: 'morphFS Core & VFS Layer',
+    suite_description: 'Automated verification for morphFS inode operations, crash recovery, and VFS compliance',
+    tests: [
+      {
+        key: `${projectKey}-001`,
+        title: 'Crash Consistency & Journal Replay',
+        description: 'Verify metadata consistency after sudden power failure during asynchronous write operations.',
+        type: 'recovery',
+        severity: 'critical',
+        priority: 'critical',
+        steps: [
+          { action: 'Mount morphFS with journal=ordered', expected: 'Filesystem mounts in read-write mode' },
+          { action: 'Start multi-threaded writes to 500 files', expected: 'Transactions queued in journal buffer' },
+          { action: 'Trigger kernel fault / abrupt unmount', expected: 'Dirty blocks preserved in circular journal' },
+          { action: 'Remount and trigger journal replay', expected: 'Zero orphan inodes; fsck reports clean state' },
+        ],
+        run: {
+          status: 'pass',
+          duration_ms: 1840,
+          actual_result: 'Journal replayed in 1.84s. All 500 file descriptors intact with valid checksums.',
+        },
+      },
+      {
+        key: `${projectKey}-002`,
+        title: 'Concurrent Directory Inode Allocation',
+        description: 'Stress-test lock contention on parent directory inode under 100 concurrent workers.',
+        type: 'stress',
+        severity: 'major',
+        priority: 'high',
+        steps: [
+          { action: 'Spawn 100 POSIX threads calling mkdir concurrently', expected: 'Directory mutex scales with zero deadlocks' },
+          { action: 'Verify all directory entries via readdir()', expected: 'All 10,000 directories listed without collision' },
+        ],
+        run: {
+          status: 'pass',
+          duration_ms: 2450,
+          actual_result: '10,000 subdirectories created across 100 threads in 2.45s.',
+        },
+      },
+      {
+        key: `${projectKey}-003`,
+        title: 'Extended Attributes (xattr) Security Context',
+        description: 'Validate POSIX ACLs and security.selinux attributes preservation across snapshot restore.',
+        type: 'security',
+        severity: 'high',
+        priority: 'high',
+        steps: [
+          { action: 'Set security.selinux attribute on /test/sec.txt', expected: 'Attribute stored in extended inode header' },
+          { action: 'Take COW snapshot snap_001', expected: 'COW refcount incremented' },
+          { action: 'Read xattr from snap_001', expected: 'Attribute returns matching hash' },
+        ],
+        run: {
+          status: 'pass',
+          duration_ms: 420,
+          actual_result: 'xattr integrity verified across COW snapshot tree.',
+        },
+      },
+    ],
+  };
+
+  const handlePushSampleTests = async () => {
+    setSyncingSample(true);
+    setSampleSuccess(null);
+    try {
+      const res = await fetch(`/api/projects/${projectId}/agent-sync`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(sampleMorphFSPayload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to sync tests');
+
+      setSampleSuccess(
+        `Success! Created ${data.summary?.created_cases} test cases and ${data.summary?.created_runs} verified runs in suite "${sampleMorphFSPayload.suite}".`
+      );
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setSyncingSample(false);
+    }
+  };
+
+  const agentPrompt = `You are a Senior QA Automation Engineer for ${projectKey}.
+Whenever you write code or run tests, push the test specifications and execution results directly to Test Manager using this HTTP endpoint:
+
+Endpoint: POST https://testmanger.vercel.app/api/projects/${projectKey}/agent-sync
+Header: Content-Type: application/json
+
+Payload Format:
+{
+  "suite": "Test Suite Name",
+  "suite_description": "What this suite verifies",
+  "tests": [
+    {
+      "key": "${projectKey}-001",
+      "title": "Descriptive Test Title",
+      "description": "What the test validates",
+      "type": "functional", // functional | regression | recovery | security | performance
+      "severity": "critical", // blocker | critical | major | minor
+      "steps": [
+        { "action": "Action performed", "expected": "Expected outcome" }
+      ],
+      "run": {
+        "status": "pass", // pass | fail | blocked | skipped
+        "duration_ms": 150,
+        "actual_result": "Detailed logs or execution outcome"
+      }
+    }
+  ]
+}
+
+Ensure all failed executions include detailed stack traces and steps so defects can be automatically tracked.`;
+
+  const curlSnippet = `curl -X POST https://testmanger.vercel.app/api/projects/${projectKey}/agent-sync \\
+  -H "Content-Type: application/json" \\
+  -d '${JSON.stringify(sampleMorphFSPayload, null, 2)}'`;
+
+  return (
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-800 pb-5">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="p-1.5 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20">
+              <Bot className="h-4 w-4" />
+            </span>
+            <h1 className="text-xl font-bold tracking-tight text-zinc-100">
+              AI Agent & Automated CI/CD Hub
+            </h1>
+          </div>
+          <p className="text-xs text-zinc-400 mt-1">
+            Let your AI coding agents and CI/CD pipelines automatically add tests, record runs, and report results.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2.5">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setIsImportModalOpen(true)}
+            className="border-zinc-800"
+          >
+            <UploadCloud className="h-3.5 w-3.5 mr-1.5 text-zinc-400" />
+            Upload JUnit / JSON Report
+          </Button>
+
+          <Button
+            size="sm"
+            variant="primary"
+            onClick={handlePushSampleTests}
+            isLoading={syncingSample}
+          >
+            <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+            Populate Sample Tests Now
+          </Button>
+        </div>
+      </div>
+
+      {sampleSuccess && (
+        <div className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 shrink-0" />
+            <span>{sampleSuccess}</span>
+          </div>
+          <a
+            href={`/projects/${projectId}/tests`}
+            className="text-xs text-emerald-300 font-semibold underline flex items-center gap-1"
+          >
+            View Test Cases <ArrowRight className="h-3 w-3" />
+          </a>
+        </div>
+      )}
+
+      {/* Tabs */}
+      <Tabs defaultValue="agent">
+        <TabsList className="bg-zinc-900 border border-zinc-800">
+          <TabsTrigger value="agent">
+            <Bot className="h-3.5 w-3.5 mr-1.5" />
+            AI Agent Instructions
+          </TabsTrigger>
+          <TabsTrigger value="curl">
+            <Terminal className="h-3.5 w-3.5 mr-1.5" />
+            cURL / REST API
+          </TabsTrigger>
+          <TabsTrigger value="junit">
+            <FileCode className="h-3.5 w-3.5 mr-1.5" />
+            JUnit & Vitest CI Pipeline
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Tab 1: AI Agent */}
+        <TabsContent value="agent" className="space-y-4 pt-3">
+          <Card className="border-zinc-800 bg-zinc-900/40">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-sm font-semibold text-zinc-100 flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-blue-400" />
+                    How to instruct your AI Agent
+                  </CardTitle>
+                  <CardDescription className="text-xs text-zinc-400 mt-0.5">
+                    Copy and paste this prompt into Antigravity, Cursor, Claude Code, or GitHub Copilot so it automatically creates and runs tests for you.
+                  </CardDescription>
+                </div>
+                <Button
+                  size="xs"
+                  variant="outline"
+                  onClick={() => copyToClipboard(agentPrompt, 'agent')}
+                >
+                  {copiedSection === 'agent' ? (
+                    <>
+                      <Check className="h-3 w-3 mr-1 text-emerald-400" />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-3 w-3 mr-1" />
+                      Copy Agent Prompt
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <pre className="p-4 rounded-lg bg-zinc-950 border border-zinc-800 font-mono text-xs text-zinc-300 overflow-x-auto whitespace-pre-wrap leading-relaxed">
+                {agentPrompt}
+              </pre>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tab 2: cURL / REST API */}
+        <TabsContent value="curl" className="space-y-4 pt-3">
+          <Card className="border-zinc-800 bg-zinc-900/40">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-sm font-semibold text-zinc-100 flex items-center gap-2">
+                    <Terminal className="h-4 w-4 text-emerald-400" />
+                    One-Command Direct Sync (cURL)
+                  </CardTitle>
+                  <CardDescription className="text-xs text-zinc-400 mt-0.5">
+                    Send test suites, step definitions, and execution run results directly via bash or python scripts.
+                  </CardDescription>
+                </div>
+                <Button
+                  size="xs"
+                  variant="outline"
+                  onClick={() => copyToClipboard(curlSnippet, 'curl')}
+                >
+                  {copiedSection === 'curl' ? (
+                    <>
+                      <Check className="h-3 w-3 mr-1 text-emerald-400" />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-3 w-3 mr-1" />
+                      Copy cURL
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <pre className="p-4 rounded-lg bg-zinc-950 border border-zinc-800 font-mono text-xs text-emerald-400 overflow-x-auto whitespace-pre-wrap leading-relaxed">
+                {curlSnippet}
+              </pre>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tab 3: JUnit CI Pipeline */}
+        <TabsContent value="junit" className="space-y-4 pt-3">
+          <Card className="border-zinc-800 bg-zinc-900/40">
+            <CardHeader>
+              <CardTitle className="text-sm font-semibold text-zinc-100 flex items-center gap-2">
+                <FileCode className="h-4 w-4 text-purple-400" />
+                GitHub Actions / CI Ingestion
+              </CardTitle>
+              <CardDescription className="text-xs text-zinc-400 mt-0.5">
+                Automatically ingest JUnit XML from Pytest, Maven, Jest, or Vitest into Test Manager in your CI workflow.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <pre className="p-4 rounded-lg bg-zinc-950 border border-zinc-800 font-mono text-xs text-zinc-300 overflow-x-auto whitespace-pre-wrap leading-relaxed">
+{`# Add this step to your .github/workflows/test.yml
+- name: Push Test Results to Test Manager
+  if: always()
+  run: |
+    curl -X POST https://testmanger.vercel.app/api/projects/${projectKey}/import-junit \\
+      -H "Content-Type: application/json" \\
+      -d @<(jq -n --rawfile content ./test-results.xml '{format: "junit", content: $content}')`}
+              </pre>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      {/* Manual Upload Modal */}
+      <JunitImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        projectId={projectId}
+        onImportComplete={() => {
+          setIsImportModalOpen(false);
+          alert('Test reports successfully imported!');
+        }}
+      />
+    </div>
+  );
+}

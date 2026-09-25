@@ -94,7 +94,7 @@ export function Sidebar({ currentProject, projects = [], userRole = 'tester' }: 
       icon: DownloadCloud,
     },
     {
-      title: 'Automated CI Import',
+      title: 'AI Agent & CI Import',
       href: `/projects/${projectId}/import`,
       icon: FileCode,
     },
@@ -105,7 +105,7 @@ export function Sidebar({ currentProject, projects = [], userRole = 'tester' }: 
     },
     {
       title: 'Audit Trail',
-      href: `/projects/${projectId}/audit`,
+      href: `/projects/${projectId}/activity`,
       icon: History,
     },
     {

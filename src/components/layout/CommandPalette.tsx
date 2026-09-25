@@ -182,7 +182,7 @@ export function CommandPalette({
                     <span>Project Backup & Restore (.testmanager)</span>
                   </Command.Item>
                   <Command.Item
-                    onSelect={() => navigate(`/projects/${pId}/audit`)}
+                    onSelect={() => navigate(`/projects/${pId}/activity`)}
                     className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                   >
                     <History className="h-3.5 w-3.5 text-zinc-400" />

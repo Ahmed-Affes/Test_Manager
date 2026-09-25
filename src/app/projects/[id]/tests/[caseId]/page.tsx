@@ -61,18 +61,28 @@ export default function TestCaseDetailPage() {
   const fetchCaseDetails = React.useCallback(async () => {
     setLoading(true);
     try {
-      // 1. Fetch test case with steps
-      const { data: cData, error: cErr } = await supabase
+      // 1. Fetch test case with steps (support UUID or key like TM-001)
+      const isCaseUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(caseId);
+      let caseQuery = supabase
         .from('test_cases')
         .select(`
           *,
           suite:test_suites(id, name),
           steps:test_steps(*)
-        `)
-        .eq('id', caseId)
-        .single();
+        `);
+
+      if (isCaseUuid) {
+        caseQuery = caseQuery.eq('id', caseId);
+      } else {
+        caseQuery = caseQuery.ilike('key', caseId);
+      }
+
+      const { data: cData, error: cErr } = await caseQuery.single();
 
       if (cErr) throw cErr;
+
+      const resolvedCaseId = cData.id;
+      const resolvedProjectId = cData.project_id;
 
       // 2. Fetch runs with step results
       const { data: runsData } = await supabase
@@ -82,14 +92,14 @@ export default function TestCaseDetailPage() {
           environment:environments(id, name, os),
           step_results:test_step_results(*)
         `)
-        .eq('test_case_id', caseId)
+        .eq('test_case_id', resolvedCaseId)
         .order('run_number', { ascending: false });
 
       // 3. Fetch linked issues
       const { data: issuesData } = await supabase
         .from('issues')
         .select('*')
-        .eq('test_case_id', caseId)
+        .eq('test_case_id', resolvedCaseId)
         .order('created_at', { ascending: false });
 
       // 4. Fetch evidence
@@ -103,16 +113,16 @@ export default function TestCaseDetailPage() {
         evList = evData || [];
       }
 
-      // 5. Fetch envs and suites
+      // 5. Fetch envs and suites using resolved project UUID
       const { data: envsData } = await supabase
         .from('environments')
         .select('*')
-        .eq('project_id', projectId);
+        .eq('project_id', resolvedProjectId);
 
       const { data: sData } = await supabase
         .from('test_suites')
         .select('*')
-        .eq('project_id', projectId);
+        .eq('project_id', resolvedProjectId);
 
       setTestCase(cData);
       setRuns(runsData || []);
@@ -125,7 +135,7 @@ export default function TestCaseDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [caseId, projectId, supabase]);
+  }, [caseId, supabase]);
 
   React.useEffect(() => {
     if (caseId) {

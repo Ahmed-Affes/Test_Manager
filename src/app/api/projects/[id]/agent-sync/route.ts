@@ -84,7 +84,7 @@ export async function POST(
       }
 
       const desc = typeof rawSuite === 'object' && rawSuite.description ? rawSuite.description : suite_description;
-      const { data: created } = await admin
+      const { data: created, error: suiteErr } = await admin
         .from('test_suites')
         .insert({
           project_id: project.id,
@@ -95,12 +95,14 @@ export async function POST(
         .select('id')
         .single();
 
-      if (created) {
-        suiteCache.set(cacheKey, created.id);
-        summary.created_suites++;
-        return created.id;
+      if (suiteErr || !created) {
+        console.warn('Failed to create suite:', suiteErr?.message);
+        return null;
       }
-      return null;
+
+      suiteCache.set(cacheKey, created.id);
+      summary.created_suites++;
+      return created.id;
     }
 
     // Helper: Resolve or Create Environment
@@ -274,7 +276,7 @@ export async function POST(
           await admin
             .from('test_cases')
             .update({
-              suite_id: caseSuiteId || undefined,
+              suite_id: caseSuiteId ?? null,
               title: testTitle,
               description: item.description || null,
               priority: item.priority || 'medium',
@@ -292,7 +294,7 @@ export async function POST(
             .from('test_cases')
             .insert({
               project_id: project.id,
-              suite_id: caseSuiteId,
+              suite_id: caseSuiteId ?? null,
               key: testKey,
               title: testTitle,
               description: item.description || null,
@@ -406,7 +408,7 @@ export async function POST(
               }
 
               // Auto-create defect on failure or crash
-              if ((runStatus === 'fail' || runStatus === 'blocked') && item.create_defect !== false) {
+              if ((runStatus === 'fail' || runStatus === 'blocked') && item.create_defect === true) {
                 const issueKey = `BUG-${project.key}-${String(summary.created_runs).padStart(3, '0')}`;
                 const defect = item.defect || item.issue || {};
                 const { data: createdIssue } = await admin.from('issues').insert({

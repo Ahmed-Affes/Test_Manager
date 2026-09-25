@@ -130,7 +130,7 @@ export function Header({
           {
             id: '78d6ac01-5144-4327-a291-e703b27e103c',
             name: 'Ahmed Affes',
-            email: 'ahmed@morphfs.dev',
+            email: 'ahmedaffes@gmail.com',
             role: 'owner',
             title: 'Lead Systems Architect & Core Author',
             duty: 'Authoring Crash Consistency, Invariant Suites & Journal Testing',
@@ -140,12 +140,12 @@ export function Header({
           },
           {
             id: '79e1aa71-7e62-44f4-883f-4be8fee1f57e',
-            name: 'Systems Co-Author',
-            email: 'friend@morphfs.dev',
+            name: 'Wacim Abdelli',
+            email: 'wacimabdelli@gmail.com',
             role: 'owner',
             title: 'Systems Engineering Co-Author',
             duty: 'Executing MFP Sync, Shell Extensions & Benchmark Cycles',
-            initials: 'CO',
+            initials: 'WA',
             avatarColor: 'bg-blue-600',
             isOnline: friendSimulatedOnline,
           },
@@ -162,12 +162,29 @@ export function Header({
           },
         ];
 
-        // Enrich with database role updates if any
-        if (mData && pData) {
+        // Enrich with database role & profile updates if any
+        if (mData) {
           mData.forEach((m: any) => {
             const match = roster.find((r) => r.id === m.user_id);
             if (match) {
               match.role = m.role as any;
+            }
+          });
+        }
+        if (pData) {
+          pData.forEach((p: any) => {
+            const match = roster.find((r) => r.id === p.id);
+            if (match) {
+              if (p.full_name) match.name = p.full_name;
+              if (p.email) match.email = p.email;
+              if (p.full_name) {
+                const parts = p.full_name.trim().split(/\s+/);
+                if (parts.length >= 2) {
+                  match.initials = `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+                } else if (parts.length === 1 && parts[0].length >= 2) {
+                  match.initials = parts[0].substring(0, 2).toUpperCase();
+                }
+              }
             }
           });
         }
@@ -222,7 +239,11 @@ export function Header({
   const resolvedMembers = teamMembers.map((m) => {
     const isSelf = user?.id === m.id || user?.email === m.email;
     const isChannelOnline = onlineUserIds.includes(m.id);
-    const isOnline = isSelf || (m.email === 'friend@morphfs.dev' ? friendSimulatedOnline : isChannelOnline);
+    const isFriend =
+      m.id === '79e1aa71-7e62-44f4-883f-4be8fee1f57e' ||
+      m.email === 'wacimabdelli@gmail.com' ||
+      m.email === 'friend@morphfs.dev';
+    const isOnline = isSelf || (isFriend ? friendSimulatedOnline : isChannelOnline);
     return { ...m, isOnline };
   });
 
@@ -269,19 +290,28 @@ export function Header({
             <button
               type="button"
               onClick={() => setCoopMenuOpen(!coopMenuOpen)}
-              className="flex items-center gap-2 px-2.5 py-1 rounded-full border border-purple-200 dark:border-purple-500/20 bg-purple-50/80 dark:bg-purple-950/30 hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-all text-xs shadow-sm"
+              className="flex items-center gap-2.5 px-3 py-1.5 rounded-full border border-purple-200/80 dark:border-purple-500/30 bg-purple-50/70 dark:bg-purple-950/40 hover:bg-purple-100/80 dark:hover:bg-purple-900/50 hover:border-purple-300 dark:hover:border-purple-500/50 transition-all text-xs shadow-xs group cursor-pointer"
               title="Co-Op Team Collaboration Status (Online / Offline Presence)"
             >
-              <div className="flex -space-x-1.5">
-                {resolvedMembers.map((m) => (
+              {/* Sleek Avatar Stack with clean cutouts & zero clipping artifacts */}
+              <div className="flex items-center -space-x-2">
+                {resolvedMembers.map((m, idx) => (
                   <div
                     key={m.id}
-                    className={`h-5 w-5 rounded-full ${m.avatarColor} border border-white dark:border-zinc-900 flex items-center justify-center text-[9px] font-bold text-white shadow-sm ring-1 transition-all ${
-                      m.isOnline ? 'ring-emerald-500 ring-2' : 'ring-zinc-400 opacity-60'
-                    }`}
+                    style={{ zIndex: 10 - idx }}
+                    className="relative shrink-0"
                     title={`${m.name} (${m.role.toUpperCase()}) - ${m.isOnline ? 'Online' : 'Offline'}`}
                   >
-                    {m.initials}
+                    <div
+                      className={`h-6 w-6 rounded-full ${m.avatarColor} border-2 border-white dark:border-zinc-950 flex items-center justify-center text-[10px] font-bold text-white shadow-xs transition-transform group-hover:scale-105 ${
+                        m.isOnline ? 'opacity-100' : 'opacity-65'
+                      }`}
+                    >
+                      {m.initials}
+                    </div>
+                    {m.isOnline && (
+                      <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full bg-emerald-500 ring-1.5 ring-white dark:ring-zinc-950 shadow-xs" />
+                    )}
                   </div>
                 ))}
               </div>
@@ -389,9 +419,9 @@ export function Header({
                     <button
                       type="button"
                       onClick={() => setFriendSimulatedOnline(!friendSimulatedOnline)}
-                      className="px-2 py-0.5 rounded text-[10px] font-mono text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30 hover:bg-blue-100 dark:hover:bg-blue-900/40 border border-blue-200 dark:border-blue-800 transition-colors"
+                      className="px-2 py-0.5 rounded text-[10px] font-mono text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30 hover:bg-blue-100 dark:hover:bg-blue-900/40 border border-blue-200 dark:border-blue-800 transition-colors cursor-pointer"
                     >
-                      {friendSimulatedOnline ? 'Toggle Friend to Offline' : 'Toggle Friend to Online'}
+                      {friendSimulatedOnline ? 'Toggle Wacim to Offline' : 'Toggle Wacim to Online'}
                     </button>
                   </div>
 

@@ -153,7 +153,7 @@ export default function MembersPage() {
         <div className="p-4 rounded-xl border border-blue-500/30 bg-blue-500/5 dark:bg-blue-950/20 space-y-3">
           <div className="flex items-center justify-between">
             <div className="h-10 w-10 rounded-xl bg-blue-600/30 text-blue-600 dark:text-blue-400 font-bold flex items-center justify-center font-mono border border-blue-500/40">
-              CO
+              WA
             </div>
             <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-blue-500/20 text-blue-700 dark:text-blue-300">
               OWNER (CO-AUTHOR)
@@ -161,10 +161,10 @@ export default function MembersPage() {
           </div>
           <div>
             <div className="text-sm font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
-              <span>Systems Co-Author</span>
+              <span>Wacim Abdelli</span>
               <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" title="Online" />
             </div>
-            <div className="text-[11px] text-blue-600 dark:text-blue-400 font-mono">Systems Co-Developer & Teammate</div>
+            <div className="text-[11px] text-blue-600 dark:text-blue-400 font-mono">Systems Engineering Co-Author</div>
             <div className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">
               MFP sync protocol, Windows Explorer shell context menus, Control Center & benchmarking.
             </div>

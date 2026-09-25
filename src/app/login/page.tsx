@@ -190,7 +190,7 @@ function LoginForm() {
                 type="button"
                 onClick={() =>
                   handleCoopProfileLogin(
-                    'ahmed@morphfs.dev',
+                    'ahmedaffes@gmail.com',
                     'Ahmed Affes',
                     'Lead Systems Architect'
                   )
@@ -220,9 +220,9 @@ function LoginForm() {
                 type="button"
                 onClick={() =>
                   handleCoopProfileLogin(
-                    'friend@morphfs.dev',
-                    'Systems Co-Author',
-                    'Systems Engineering Teammate'
+                    'wacimabdelli@gmail.com',
+                    'Wacim Abdelli',
+                    'Systems Engineering Co-Author'
                   )
                 }
                 disabled={loading}
@@ -230,19 +230,19 @@ function LoginForm() {
               >
                 <div className="flex items-center gap-2.5">
                   <div className="h-7 w-7 rounded-md bg-blue-600/20 text-blue-400 font-bold flex items-center justify-center text-xs font-mono">
-                    CO
+                    WA
                   </div>
                   <div>
                     <div className="text-xs font-semibold text-zinc-200">
-                      Engineering Co-Author (Friend)
+                      Wacim Abdelli
                     </div>
                     <div className="text-[10px] text-blue-400 font-mono">
-                      MFP Sync & Windows Shell Co-Developer
+                      Systems Engineering Co-Author & Teammate
                     </div>
                   </div>
                 </div>
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-500/20 text-blue-300">
-                  Co-Op
+                  Co-Author
                 </span>
               </button>
 

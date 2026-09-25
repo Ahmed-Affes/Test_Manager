@@ -5,20 +5,22 @@ import { useParams } from 'next/navigation';
 import {
   Bot,
   Terminal,
-  UploadCloud,
   CheckCircle2,
   Copy,
   Check,
   FileCode,
   Sparkles,
   Play,
-  Layers,
+  AlertTriangle,
   ArrowRight,
+  Upload,
+  Zap,
+  Hand,
+  Globe,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { JunitImportModal } from '@/components/automated/JunitImportModal';
 
 export default function ImportAndAgentPage() {
@@ -26,7 +28,7 @@ export default function ImportAndAgentPage() {
   const projectId = params.id as string;
   const supabase = createClient();
 
-  const [projectKey, setProjectKey] = React.useState('TM-101');
+  const [projectKey, setProjectKey] = React.useState('MORPH');
   const [copiedSection, setCopiedSection] = React.useState<string | null>(null);
   const [isImportModalOpen, setIsImportModalOpen] = React.useState(false);
   const [syncingSample, setSyncingSample] = React.useState(false);
@@ -48,127 +50,205 @@ export default function ImportAndAgentPage() {
   const copyToClipboard = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
     setCopiedSection(id);
-    setTimeout(() => setCopiedSection(null), 2000);
+    setTimeout(() => setCopiedSection(null), 2500);
   };
 
-  // Comprehensive sample morphFS test ecosystem covering all features
-  const sampleMorphFSPayload = {
-    suite: 'morphFS Core & VFS Layer',
-    suite_description: 'Automated verification for morphFS inode operations, crash recovery, and VFS compliance',
-    environment: {
-      name: 'morphFS Linux 6.12 (QEMU KVM)',
-      os: 'Ubuntu 24.04 (Kernel 6.12.5-morphfs)',
-      cpu: '16 vCPU AMD EPYC',
-      ram: '32 GB RAM',
-      runtime: 'QEMU KVM + GDB Stub',
+  const agentPrompt = `You are a coding and testing AI agent working on the ${projectKey} project.
+
+Every time you implement a new feature, fix a bug, or run any tests, you MUST report the results to Test Manager. This keeps the team's quality dashboard up to date automatically.
+
+HOW TO REPORT TESTS
+===================
+Send a POST request to this endpoint after every test run:
+
+  POST https://testmangerapp.vercel.app/api/projects/${projectKey}/agent-sync
+  Content-Type: application/json
+
+WHAT TO INCLUDE
+===============
+You can include any combination of these fields:
+
+- suite: A logical group name for the feature (e.g. "Login Feature", "File Upload", "Search Engine")  
+- tests: An array of test cases you ran, each with:
+    - key: unique identifier like "${projectKey}-001"
+    - title: what the test checks
+    - expected_result: what should happen
+    - steps: the actions you took (optional but helpful)
+    - run.status: "pass", "fail", "blocked", or "skipped"
+    - run.actual_result: what actually happened
+    - run.duration_ms: how long it took
+    - run.branch / run.version: optional, for tracking which build
+    - run.evidence: attach crash logs or screenshots by filename
+
+WHEN A TEST FAILS
+=================
+If a test fails, add create_defect: true and a defect object to automatically file a bug:
+
+  "run": { "status": "fail", ... },
+  "create_defect": true,
+  "defect": {
+    "title": "Short description of the bug",
+    "description": "What went wrong and how to reproduce it",
+    "severity": "critical"  // blocker, critical, major, minor, trivial
+  }
+
+MINIMAL EXAMPLE (single passing test)
+======================================
+{
+  "suite": "Feature Name",
+  "tests": [{
+    "key": "${projectKey}-001",
+    "title": "User can log in with valid credentials",
+    "expected_result": "User is redirected to dashboard",
+    "run": {
+      "status": "pass",
+      "duration_ms": 320,
+      "actual_result": "User was redirected to /dashboard successfully"
+    }
+  }]
+}
+
+FULL EXAMPLE (test suite with a failure and auto-bug)
+======================================================
+{
+  "suite": "File Upload Feature",
+  "suite_description": "Tests for uploading, validating, and storing files",
+  "environment": {
+    "name": "Ubuntu 22.04 LTS",
+    "os": "Ubuntu 22.04",
+    "runtime": "Node.js 20"
+  },
+  "tests": [
+    {
+      "key": "${projectKey}-010",
+      "title": "Upload a valid PNG file",
+      "expected_result": "File saved and URL returned",
+      "steps": [
+        { "action": "POST /api/upload with valid PNG", "expected": "HTTP 200 with file URL" }
+      ],
+      "run": {
+        "status": "pass",
+        "duration_ms": 150,
+        "actual_result": "File uploaded, URL https://cdn.example.com/img.png returned"
+      }
     },
-    plan: {
-      name: 'v1.0 Milestone Release Verification',
-      description: 'Core filesystem stability, crash consistency, and POSIX compliance gating',
-    },
+    {
+      "key": "${projectKey}-011",
+      "title": "Upload a file larger than 10MB is rejected",
+      "expected_result": "HTTP 413 Payload Too Large",
+      "run": {
+        "status": "fail",
+        "duration_ms": 80,
+        "actual_result": "Server returned HTTP 500 instead of 413"
+      },
+      "create_defect": true,
+      "defect": {
+        "title": "Large file upload crashes server instead of returning 413",
+        "description": "When uploading a file > 10MB, server returns 500 instead of 413. Needs proper size validation middleware.",
+        "severity": "major"
+      }
+    }
+  ]
+}`;
+
+  const nodejsSnippet = `// After running your tests, call this to push results to Test Manager:
+const payload = {
+  suite: "My Feature Suite",
+  tests: [
+    {
+      key: "${projectKey}-001",
+      title: "Feature works as expected",
+      expected_result: "Returns 200 OK",
+      run: {
+        status: "pass",        // pass | fail | blocked | skipped
+        duration_ms: 120,
+        actual_result: "Returned 200 OK with correct body",
+        branch: "main",
+        version: "v1.0.0"
+      }
+    }
+  ]
+};
+
+const response = await fetch(
+  "https://testmangerapp.vercel.app/api/projects/${projectKey}/agent-sync",
+  {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  }
+);
+
+const result = await response.json();
+console.log(result.summary); // { created_cases: 1, created_runs: 1, ... }`;
+
+  const powershellSnippet = `# PowerShell - push test result to Test Manager
+$payload = @{
+  suite = "My Feature Suite"
+  tests = @(
+    @{
+      key = "${projectKey}-001"
+      title = "Feature works as expected"
+      expected_result = "Returns 200 OK"
+      run = @{
+        status = "pass"
+        duration_ms = 120
+        actual_result = "Returned 200 OK with correct body"
+      }
+    }
+  )
+} | ConvertTo-Json -Depth 5
+
+Invoke-RestMethod \`
+  -Uri "https://testmangerapp.vercel.app/api/projects/${projectKey}/agent-sync" \`
+  -Method POST \`
+  -Headers @{"Content-Type" = "application/json"} \`
+  -Body $payload`;
+
+  // Sample payload for demo push
+  const samplePayload = {
+    suite: 'Demo: File Operations',
+    suite_description: 'Sample test results pushed from the AI Agent Guide',
+    environment: { name: 'Demo Environment', os: 'Ubuntu 22.04', runtime: 'Node.js 20' },
     tests: [
       {
-        key: `${projectKey}-001`,
-        title: 'Crash Consistency & Journal Replay',
-        description: 'Verify metadata consistency after sudden power failure during asynchronous write operations.',
-        type: 'recovery',
-        severity: 'critical',
-        priority: 'critical',
-        preconditions: 'morphFS module loaded; root partition mounted with ordered journaling',
-        expected_result: 'Zero orphan inodes; fsck reports clean state with all metadata intact',
-        steps: [
-          { action: 'Mount morphFS with journal=ordered', expected: 'Filesystem mounts in read-write mode' },
-          { action: 'Start multi-threaded writes to 500 files', expected: 'Transactions queued in journal buffer' },
-          { action: 'Trigger kernel fault / abrupt unmount', expected: 'Dirty blocks preserved in circular journal' },
-          { action: 'Remount and trigger journal replay', expected: 'Zero orphan inodes; fsck reports clean state' },
-        ],
-        run: {
-          status: 'pass',
-          duration_ms: 1840,
-          actual_result: 'Journal replayed in 1.84s. All 500 file descriptors intact with valid checksums.',
-          version: 'v1.0.0-rc1',
-          branch: 'main',
-          commit_sha: 'a1b2c3d4e5',
-          evidence: [
-            {
-              file_name: 'fsck_journal_replay.log',
-              file_type: 'text/plain',
-              description: 'fsck journal replay verification output log',
-            },
-          ],
-        },
-      },
-      {
-        key: `${projectKey}-002`,
-        title: 'Concurrent Directory Inode Allocation',
-        description: 'Stress-test lock contention on parent directory inode under 100 concurrent workers.',
-        type: 'stress',
+        key: `${projectKey}-DEMO-001`,
+        title: 'Create and write a new file',
+        expected_result: 'File created with correct content',
+        type: 'functional',
         severity: 'major',
-        priority: 'high',
-        preconditions: '100 worker threads initialized in user space',
-        expected_result: '10,000 directories created without deadlock or lock contention panic',
         steps: [
-          { action: 'Spawn 100 POSIX threads calling mkdir concurrently', expected: 'Directory mutex scales with zero deadlocks' },
-          { action: 'Verify all directory entries via readdir()', expected: 'All 10,000 directories listed without collision' },
+          { action: 'Call create_file("/tmp/test.txt", "hello")', expected: 'Returns success' },
+          { action: 'Read /tmp/test.txt', expected: 'Content equals "hello"' },
         ],
         run: {
           status: 'pass',
-          duration_ms: 2450,
-          actual_result: '10,000 subdirectories created across 100 threads in 2.45s.',
-          version: 'v1.0.0-rc1',
+          duration_ms: 32,
+          actual_result: 'File created and content verified.',
+          version: 'v0.1.0',
           branch: 'main',
         },
       },
       {
-        key: `${projectKey}-003`,
-        title: 'Extended Attributes (xattr) Security Context',
-        description: 'Validate POSIX ACLs and security.selinux attributes preservation across snapshot restore.',
-        type: 'security',
-        severity: 'critical',
-        priority: 'critical',
-        preconditions: 'SELinux enabled in permissive mode; xattr partition enabled',
-        expected_result: 'xattr integrity verified across COW snapshot tree',
-        steps: [
-          { action: 'Set security.selinux attribute on /test/sec.txt', expected: 'Attribute stored in extended inode header' },
-          { action: 'Take COW snapshot snap_001', expected: 'COW refcount incremented' },
-          { action: 'Read xattr from snap_001', expected: 'Attribute returns matching hash' },
-        ],
+        key: `${projectKey}-DEMO-002`,
+        title: 'Delete a non-existent file returns correct error',
+        expected_result: 'Returns ENOENT error code',
+        type: 'functional',
+        severity: 'minor',
         run: {
           status: 'fail',
-          duration_ms: 680,
-          actual_result: 'Kernel returned EINVAL: Extended attribute hash mismatch on snapshot boundary.',
-          version: 'v1.0.0-rc1',
-          branch: 'main',
-          evidence: [
-            {
-              file_name: 'xattr_mismatch.dump',
-              file_type: 'application/octet-stream',
-              description: 'Raw inode header dump with corrupted xattr offset',
-            },
-          ],
+          duration_ms: 10,
+          actual_result: 'Returned generic 500 error instead of ENOENT',
         },
         create_defect: true,
         defect: {
-          title: '[morphFS Kernel Bug] xattr hash mismatch on COW snapshot restore',
-          description: 'Extended attributes are corrupted when reading from a read-only snapshot boundary.',
-          severity: 'critical',
-          priority: 'critical',
-          root_cause: 'Missing inode offset calculation in snapshot lookup function.',
-          evidence: [
-            {
-              file_name: 'kernel_panic_trace.txt',
-              file_type: 'text/plain',
-              description: 'Kernel stack trace at morphfs_getxattr',
-            },
-          ],
+          title: 'Delete non-existent file returns 500 instead of ENOENT',
+          description: 'Error handling for missing files needs to map to the correct error code.',
+          severity: 'minor',
         },
       },
     ],
-    signoff: {
-      decision: 'conditional',
-      role: 'Automated AI Quality Sign-Off',
-      notes: 'Crash recovery and concurrency suites passed. Release blocked until xattr COW defect is resolved.',
-    },
+    signoff: { decision: 'conditional', role: 'AI Agent', notes: 'Demo run: one pass, one fail with auto-filed bug.' },
   };
 
   const handlePushSampleTests = async () => {
@@ -178,14 +258,11 @@ export default function ImportAndAgentPage() {
       const res = await fetch(`/api/projects/${projectId}/agent-sync`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(sampleMorphFSPayload),
+        body: JSON.stringify(samplePayload),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to sync tests');
-
-      setSampleSuccess(
-        `Full Ecosystem Synchronized! Populated Test Suites, Target Environment, Test Cases, Execution History, Defect Issue, Test Plan, and Quality Sign-Off.`
-      );
+      setSampleSuccess(`Demo synced! Created ${data.summary?.created_cases ?? 0} test cases, ${data.summary?.created_runs ?? 0} runs, ${data.summary?.created_issues ?? 0} bug(s) auto-filed.`);
     } catch (err: any) {
       alert(err.message);
     } finally {
@@ -193,110 +270,31 @@ export default function ImportAndAgentPage() {
     }
   };
 
-  const agentPrompt = `You are an AI Coding & Verification Agent building ${projectKey}.
-Whenever you implement a feature, module, or bugfix in ${projectKey}, write and execute your tests, then push the entire verification ecosystem directly to Test Manager via this single API call:
-
-Endpoint: POST https://testmangerapp.vercel.app/api/projects/${projectKey}/agent-sync
-Header: Content-Type: application/json
-
-What you have full access to create & manage automatically:
-- Suites: Define your feature verification suite (e.g., "Disk Layout & Superblock", "Crash Recovery & Journal Replay", "WinFsp Driver Sync")
-- Environments: Define your runtime targets (e.g., "Windows 11 WinFsp Native", "WSL2 Ubuntu 24.04 QEMU")
-- Milestones / Plans: Group tests into defense milestones (e.g., "PFE Milestone 1: Core Disk Layout")
-- Test Cases & Step Definitions: Actions, preconditions, expected outcomes
-- Execution History: Actual duration, passing/failing status, commit SHA, version
-- Crash Dumps & Evidence Vault: Attach logs, hex traces, and core dump filenames directly to the run or defect
-- Defect Tracking: Automatically opened if a test fails or crashes
-- Quality Sign-Offs: Submit quality approval decisions (approved, conditional, rejected)
-
-Payload Format:
-{
-  "suite": "morphFS Core & VFS Layer",
-  "suite_description": "Verification of inode allocation and crash consistency",
-  "environment": {
-    "name": "morphFS Windows 11 (WinFsp)",
-    "os": "Windows 11 23H2",
-    "runtime": "WinFsp + PowerShell 7 Harness"
-  },
-  "plan": {
-    "name": "PFE Milestone 1: Core Disk Layout",
-    "description": "Superblock and COW inode tree verification"
-  },
-  "tests": [
-    {
-      "key": "${projectKey}-001",
-      "title": "Crash Consistency & Journal Replay",
-      "description": "Verify filesystem integrity after sudden power interruption.",
-      "severity": "critical",
-      "priority": "critical",
-      "type": "recovery",
-      "preconditions": "Ordered journaling enabled",
-      "expected_result": "Clean journal replay with zero orphan inodes",
-      "steps": [
-        { "action": "Mount with journal=ordered", "expected": "Filesystem mounts rw" },
-        { "action": "Trigger abrupt power fault", "expected": "Dirty blocks written to circular buffer" },
-        { "action": "Remount and replay journal", "expected": "Zero orphan inodes; clean state" }
-      ],
-      "run": {
-        "status": "pass",
-        "duration_ms": 1420,
-        "actual_result": "Replay completed in 1.42s with zero orphan inodes.",
-        "version": "v1.0.0",
-        "branch": "main",
-        "evidence": [
-          { "file_name": "fsck_journal_replay.log", "file_type": "text/plain", "description": "fsck replay output" }
-        ]
-      }
-    }
-  ],
-  "signoff": {
-    "decision": "approved",
-    "role": "Lead Systems Architect",
-    "notes": "Journal replay verified without metadata corruption."
-  }
-}`;
-
-  const curlSnippet = `curl -X POST https://testmangerapp.vercel.app/api/projects/${projectKey}/agent-sync \\
-  -H "Content-Type: application/json" \\
-  -d '${JSON.stringify(sampleMorphFSPayload, null, 2)}'`;
-
   return (
     <div className="space-y-6">
-      {/* Page Header */}
+      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-200 dark:border-zinc-800 pb-5">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 mb-1">
             <span className="p-1.5 rounded-lg bg-blue-500/10 text-blue-500 dark:text-blue-400 border border-blue-500/20">
               <Bot className="h-4 w-4" />
             </span>
             <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
-              AI Agent & Automated CI/CD Hub
+              AI Agent Guide
             </h1>
           </div>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-            Let your AI coding agents automatically create verification suites, add test cases, log execution runs, attach crash dumps, and register environments.
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+            How to connect your AI coding agent (or any script) to automatically push test results to this dashboard.
           </p>
         </div>
-
-        <div className="flex items-center gap-2.5">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setIsImportModalOpen(true)}
-            className="border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300"
-          >
-            <UploadCloud className="h-3.5 w-3.5 mr-1.5 text-zinc-500 dark:text-zinc-400" />
-            Upload JUnit / JSON Report
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" onClick={() => setIsImportModalOpen(true)} className="gap-1.5">
+            <Upload className="h-3.5 w-3.5" />
+            Upload JUnit XML
           </Button>
-
-          <Button
-            size="sm"
-            variant="primary"
-            onClick={handlePushSampleTests}
-            isLoading={syncingSample}
-          >
-            <Sparkles className="h-3.5 w-3.5 mr-1.5" />
-            Populate Sample Run (Demo)
+          <Button size="sm" variant="primary" onClick={handlePushSampleTests} isLoading={syncingSample} className="gap-1.5">
+            <Sparkles className="h-3.5 w-3.5" />
+            Run Demo Sync
           </Button>
         </div>
       </div>
@@ -307,149 +305,197 @@ Payload Format:
             <CheckCircle2 className="h-4 w-4 shrink-0" />
             <span>{sampleSuccess}</span>
           </div>
-          <a
-            href={`/projects/${projectId}/tests`}
-            className="text-xs text-emerald-600 dark:text-emerald-300 font-semibold underline flex items-center gap-1"
-          >
+          <a href={`/projects/${projectId}/tests`} className="text-xs font-semibold underline flex items-center gap-1">
             View Test Cases <ArrowRight className="h-3 w-3" />
           </a>
         </div>
       )}
 
-      {/* Tabs */}
-      <Tabs defaultValue="agent">
-        <TabsList className="bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
-          <TabsTrigger value="agent">
-            <Bot className="h-3.5 w-3.5 mr-1.5" />
-            AI Agent Instructions
-          </TabsTrigger>
-          <TabsTrigger value="curl">
-            <Terminal className="h-3.5 w-3.5 mr-1.5" />
-            cURL / REST API
-          </TabsTrigger>
-          <TabsTrigger value="junit">
-            <FileCode className="h-3.5 w-3.5 mr-1.5" />
-            JUnit & Vitest CI Pipeline
-          </TabsTrigger>
-        </TabsList>
+      {/* How it works: 3 modes */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="border-blue-200 dark:border-blue-800/60 bg-blue-50/50 dark:bg-blue-950/10 shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+              <Bot className="h-4 w-4 text-blue-500" />
+              AI Agent (Recommended)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-xs text-zinc-600 dark:text-zinc-400 space-y-1.5">
+            <p>Give your AI agent (Antigravity, Cursor, Claude Code, Copilot) the prompt below.</p>
+            <p>It will automatically push test results every time it writes or runs code — no manual work needed.</p>
+          </CardContent>
+        </Card>
 
-        {/* Tab 1: AI Agent */}
-        <TabsContent value="agent" className="space-y-4 pt-3">
-          <Card className="border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 shadow-sm">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-blue-500 dark:text-blue-400" />
-                    How to instruct your AI Agent
-                  </CardTitle>
-                  <CardDescription className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-                    Copy and paste this prompt into Antigravity, Cursor, Claude Code, or GitHub Copilot so it automatically creates and runs tests for you.
-                  </CardDescription>
-                </div>
-                <Button
-                  size="xs"
-                  variant="outline"
-                  onClick={() => copyToClipboard(agentPrompt, 'agent')}
-                >
-                  {copiedSection === 'agent' ? (
-                    <>
-                      <Check className="h-3 w-3 mr-1 text-emerald-500 dark:text-emerald-400" />
-                      Copied!
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-3 w-3 mr-1" />
-                      Copy Agent Prompt
-                    </>
-                  )}
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <pre className="p-4 rounded-lg bg-zinc-950 border border-zinc-800 font-mono text-xs text-zinc-300 overflow-x-auto whitespace-pre-wrap leading-relaxed">
-                {agentPrompt}
-              </pre>
-            </CardContent>
-          </Card>
-        </TabsContent>
+        <Card className="border-purple-200 dark:border-purple-800/60 bg-purple-50/50 dark:bg-purple-950/10 shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+              <Hand className="h-4 w-4 text-purple-500" />
+              Manual (from the site)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-xs text-zinc-600 dark:text-zinc-400 space-y-1.5">
+            <p>Go to <strong>Test Cases</strong>, click <strong>&quot;+ Add Test Case&quot;</strong> to write a test.</p>
+            <p>Then click the <strong>▶ Run</strong> button on any test case to manually record whether it passed or failed.</p>
+          </CardContent>
+        </Card>
 
-        {/* Tab 2: cURL / REST API */}
-        <TabsContent value="curl" className="space-y-4 pt-3">
-          <Card className="border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 shadow-sm">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-                    <Terminal className="h-4 w-4 text-emerald-500 dark:text-emerald-400" />
-                    One-Command Direct Sync (cURL)
-                  </CardTitle>
-                  <CardDescription className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-                    Send test suites, step definitions, and execution run results directly via bash or python scripts.
-                  </CardDescription>
-                </div>
-                <Button
-                  size="xs"
-                  variant="outline"
-                  onClick={() => copyToClipboard(curlSnippet, 'curl')}
-                >
-                  {copiedSection === 'curl' ? (
-                    <>
-                      <Check className="h-3 w-3 mr-1 text-emerald-500 dark:text-emerald-400" />
-                      Copied!
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-3 w-3 mr-1" />
-                      Copy cURL
-                    </>
-                  )}
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <pre className="p-4 rounded-lg bg-zinc-950 border border-zinc-800 font-mono text-xs text-emerald-400 overflow-x-auto whitespace-pre-wrap leading-relaxed">
-                {curlSnippet}
-              </pre>
-            </CardContent>
-          </Card>
-        </TabsContent>
+        <Card className="border-emerald-200 dark:border-emerald-800/60 bg-emerald-50/50 dark:bg-emerald-950/10 shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+              <Terminal className="h-4 w-4 text-emerald-500" />
+              Script / CI Pipeline
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-xs text-zinc-600 dark:text-zinc-400 space-y-1.5">
+            <p>Use the Node.js or PowerShell snippet below in any test script.</p>
+            <p>Works in GitHub Actions, local scripts, or anywhere that can make HTTP requests.</p>
+          </CardContent>
+        </Card>
+      </div>
 
-        {/* Tab 3: JUnit CI Pipeline */}
-        <TabsContent value="junit" className="space-y-4 pt-3">
-          <Card className="border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 shadow-sm">
-            <CardHeader>
+      {/* What does "Run" mean */}
+      <Card className="border-amber-200 dark:border-amber-800/40 bg-amber-50/40 dark:bg-amber-950/10 shadow-sm">
+        <CardContent className="pt-4">
+          <div className="flex gap-3 items-start">
+            <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+            <div className="text-xs text-zinc-700 dark:text-zinc-300 space-y-1">
+              <p className="font-semibold text-zinc-900 dark:text-zinc-100">What does the ▶ Run button do?</p>
+              <p>
+                A <strong>Test Case</strong> is just a description — it says <em>what</em> to test and <em>what result to expect</em>.
+                It doesn&apos;t actually run any code.
+              </p>
+              <p>
+                When you click <strong>▶ Run</strong>, a modal opens where you record the outcome: Did it pass? Did it fail?
+                What actually happened? How long did it take? This creates a <strong>Test Run</strong> — a timestamped record of one execution.
+              </p>
+              <p>
+                <strong>If you use the AI agent:</strong> The agent runs the actual code, sees the result, and pushes it via API automatically.
+                You don&apos;t need to click ▶ Run at all — the agent does it for you.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Step by step: Agent prompt */}
+      <Card className="border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 shadow-sm">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
               <CardTitle className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-                <FileCode className="h-4 w-4 text-purple-500 dark:text-purple-400" />
-                GitHub Actions / CI Ingestion
+                <Sparkles className="h-4 w-4 text-blue-500" />
+                Step 1 — Copy this prompt into your AI agent
               </CardTitle>
               <CardDescription className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-                Automatically ingest JUnit XML from Pytest, Maven, Jest, or Vitest into Test Manager in your CI workflow.
+                Paste this into Antigravity, Cursor, Claude Code, or GitHub Copilot before you start building.
               </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <pre className="p-4 rounded-lg bg-zinc-950 border border-zinc-800 font-mono text-xs text-zinc-300 overflow-x-auto whitespace-pre-wrap leading-relaxed">
-{`# Add this step to your .github/workflows/test.yml
-- name: Push Test Results to Test Manager
-  if: always()
-  run: |
-    curl -X POST https://testmanger.vercel.app/api/projects/${projectKey}/import-junit \\
-      -H "Content-Type: application/json" \\
-      -d @<(jq -n --rawfile content ./test-results.xml '{format: "junit", content: $content}')`}
-              </pre>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+            </div>
+            <Button size="xs" variant="outline" onClick={() => copyToClipboard(agentPrompt, 'agent')}>
+              {copiedSection === 'agent' ? (
+                <><Check className="h-3 w-3 mr-1 text-emerald-500" />Copied!</>
+              ) : (
+                <><Copy className="h-3 w-3 mr-1" />Copy Prompt</>
+              )}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <pre className="p-4 rounded-lg bg-zinc-950 border border-zinc-800 font-mono text-xs text-zinc-300 overflow-x-auto whitespace-pre-wrap leading-relaxed max-h-96 overflow-y-auto">
+            {agentPrompt}
+          </pre>
+        </CardContent>
+      </Card>
 
-      {/* Manual Upload Modal */}
+      {/* Node.js snippet */}
+      <Card className="border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 shadow-sm">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                <Globe className="h-4 w-4 text-emerald-500" />
+                Step 2 (optional) — Add this to your test script
+              </CardTitle>
+              <CardDescription className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                Paste in Node.js, Python (with requests), or any language that can make HTTP POST requests.
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button size="xs" variant="ghost" onClick={() => copyToClipboard(nodejsSnippet, 'node')} className="text-xs">
+                {copiedSection === 'node' ? <><Check className="h-3 w-3 mr-1 text-emerald-500" />Copied!</> : <><Copy className="h-3 w-3 mr-1" />Node.js</>}
+              </Button>
+              <Button size="xs" variant="ghost" onClick={() => copyToClipboard(powershellSnippet, 'ps')} className="text-xs">
+                {copiedSection === 'ps' ? <><Check className="h-3 w-3 mr-1 text-emerald-500" />Copied!</> : <><Copy className="h-3 w-3 mr-1" />PowerShell</>}
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <pre className="p-4 rounded-lg bg-zinc-950 border border-zinc-800 font-mono text-xs text-emerald-400 overflow-x-auto whitespace-pre-wrap leading-relaxed">
+            {nodejsSnippet}
+          </pre>
+        </CardContent>
+      </Card>
+
+      {/* API Reference quick table */}
+      <Card className="border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+            <Zap className="h-4 w-4 text-amber-500" />
+            Quick API Reference
+          </CardTitle>
+          <CardDescription className="text-xs text-zinc-500 dark:text-zinc-400">
+            All the fields you can send in the payload. Only <code className="bg-zinc-100 dark:bg-zinc-800 px-1 rounded">suite</code> and <code className="bg-zinc-100 dark:bg-zinc-800 px-1 rounded">tests</code> are required.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 overflow-hidden">
+            <table className="w-full text-xs">
+              <thead className="bg-zinc-50 dark:bg-zinc-900/80 border-b border-zinc-200 dark:border-zinc-800">
+                <tr>
+                  <th className="p-2.5 text-left font-semibold text-zinc-700 dark:text-zinc-300 w-40">Field</th>
+                  <th className="p-2.5 text-left font-semibold text-zinc-700 dark:text-zinc-300 w-20">Required</th>
+                  <th className="p-2.5 text-left font-semibold text-zinc-700 dark:text-zinc-300">What it does</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
+                {[
+                  ['suite', '✅ Yes', 'Name of the feature group (e.g. "Login Feature")'],
+                  ['suite_description', 'No', 'Optional description of the suite'],
+                  ['tests', '✅ Yes', 'Array of test cases to create/update and run'],
+                  ['tests[].key', '✅ Yes', 'Unique ID like MORPH-001. If it exists, the run is added to it.'],
+                  ['tests[].title', '✅ Yes', 'What the test checks'],
+                  ['tests[].expected_result', '✅ Yes', 'What should happen'],
+                  ['tests[].steps', 'No', 'Array of { action, expected } steps'],
+                  ['tests[].run.status', '✅ Yes', '"pass", "fail", "blocked", or "skipped"'],
+                  ['tests[].run.actual_result', 'No', 'What actually happened'],
+                  ['tests[].run.duration_ms', 'No', 'How long the test took in milliseconds'],
+                  ['tests[].run.branch', 'No', 'Git branch name'],
+                  ['tests[].run.version', 'No', 'App version string'],
+                  ['tests[].run.evidence', 'No', 'Array of { file_name, file_type, description }'],
+                  ['tests[].create_defect', 'No', 'true → auto-file a bug when run fails'],
+                  ['tests[].defect.title', 'If defect', 'Bug title'],
+                  ['tests[].defect.severity', 'If defect', '"blocker", "critical", "major", "minor", "trivial"'],
+                  ['environment', 'No', '{ name, os, runtime } — what machine the tests ran on'],
+                  ['signoff', 'No', '{ decision, role, notes } — QA approval record'],
+                ].map(([field, req, desc]) => (
+                  <tr key={field} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30">
+                    <td className="p-2.5 font-mono text-blue-600 dark:text-blue-400">{field}</td>
+                    <td className="p-2.5 text-zinc-500">{req}</td>
+                    <td className="p-2.5 text-zinc-600 dark:text-zinc-400">{desc}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+
       <JunitImportModal
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
         projectId={projectId}
         onImportComplete={() => {
           setIsImportModalOpen(false);
-          alert('Test reports successfully imported!');
         }}
       />
     </div>

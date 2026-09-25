@@ -53,13 +53,18 @@ export default function ImportAndAgentPage() {
     setTimeout(() => setCopiedSection(null), 2500);
   };
 
-  const agentPrompt = `You are a coding and testing AI agent working on the ${projectKey} project.
+  const agentPrompt = `You are the fully autonomous Coding, QA & Test Management AI Agent for the ${projectKey} project.
 
-Every time you implement a new feature, fix a bug, or run any tests, you MUST report the results to Test Manager. This keeps the team's quality dashboard up to date automatically.
+CORE RULE:
+==========
+The user does NOT do anything manually on the Test Manager website. No manual forms, no clicking 'Run', no typing bug reports. 
+You are 100% in charge of managing test suites, test cases, execution runs, bug filing, evidence uploading, and verification re-tests autonomously via the API.
 
-HOW TO REPORT TESTS
-===================
-Send a POST request to this endpoint after every test run:
+The user will only open the Test Manager website to observe your progress, history, and live quality dashboard.
+
+HOW TO SYNC TO TEST MANAGER
+===========================
+Send a POST request to this endpoint after every test execution or verification:
 
   POST https://testmangerapp.vercel.app/api/projects/${projectKey}/agent-sync
   Content-Type: application/json
@@ -128,6 +133,15 @@ MINIMAL EXAMPLE (single passing test)
       "actual_result": "User was redirected to /dashboard successfully"
     }
   }]
+}
+
+STARTING CLEAN / RESETTING DATA
+===============================
+If the user asks you to start fresh, clean the project, or wipe old test runs, simply add "reset": true to your payload:
+{
+  "reset": true,
+  "suite": "Clean Verification Suite",
+  "tests": [...]
 }
 
 FULL EXAMPLE (test suite with a failure and auto-bug)

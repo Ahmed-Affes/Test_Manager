@@ -25,6 +25,9 @@ export async function POST(
     }
 
     const {
+      reset = false,
+      wipe = false,
+      clear = false,
       suite: singleSuiteParam,
       suites: multiSuitesParam,
       suite_description = 'Automated verification suite created by AI agent',
@@ -43,6 +46,18 @@ export async function POST(
       signoffs: multiSignoffsParam,
       gates: gatesParam,
     } = body;
+
+    // Support autonomous project wipe / fresh start if requested
+    if (reset || wipe || clear) {
+      await admin.from('evidence').delete().eq('project_id', project.id);
+      await admin.from('issues').delete().eq('project_id', project.id);
+      await admin.from('test_runs').delete().eq('project_id', project.id);
+      await admin.from('test_cases').delete().eq('project_id', project.id);
+      await admin.from('test_suites').delete().eq('project_id', project.id);
+      await admin.from('test_plans').delete().eq('project_id', project.id);
+      await admin.from('environments').delete().eq('project_id', project.id);
+      await admin.from('report_signoffs').delete().eq('project_id', project.id);
+    }
 
     const summary = {
       created_suites: 0,

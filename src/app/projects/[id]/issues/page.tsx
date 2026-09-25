@@ -167,8 +167,8 @@ export default function IssuesPage() {
 
     if (runErr) throw runErr;
 
-    // 2. If the retest passed, mark the issue resolved/closed!
-    if (retestActiveIssue && runData.status === 'passed') {
+    // 2. If the retest passed, mark the issue resolved
+    if (retestActiveIssue && runData.status === 'pass') {
       await supabase
         .from('issues')
         .update({
@@ -408,9 +408,9 @@ export default function IssuesPage() {
                       <RetestButton
                         issue={issue}
                         testCase={issue.test_case}
-                        onTriggerRetest={() => {
-                          setRetestActiveCase(issue.test_case);
-                          setRetestActiveIssue(issue);
+                        onTriggerRetest={(iss, tc) => {
+                          setRetestActiveCase(tc ?? issue.test_case);
+                          setRetestActiveIssue(iss);
                         }}
                         size="xs"
                       />

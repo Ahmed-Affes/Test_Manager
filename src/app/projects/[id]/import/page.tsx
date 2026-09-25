@@ -231,17 +231,17 @@ Ensure all failed executions automatically create defects and attach execution l
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-800 pb-5">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-200 dark:border-zinc-800 pb-5">
         <div>
           <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20">
+            <span className="p-1.5 rounded-lg bg-blue-500/10 text-blue-500 dark:text-blue-400 border border-blue-500/20">
               <Bot className="h-4 w-4" />
             </span>
-            <h1 className="text-xl font-bold tracking-tight text-zinc-100">
+            <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
               AI Agent & Automated CI/CD Hub
             </h1>
           </div>
-          <p className="text-xs text-zinc-400 mt-1">
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
             Let your AI coding agents and CI/CD pipelines automatically add tests, record runs, and report results.
           </p>
         </div>
@@ -251,9 +251,9 @@ Ensure all failed executions automatically create defects and attach execution l
             size="sm"
             variant="outline"
             onClick={() => setIsImportModalOpen(true)}
-            className="border-zinc-800"
+            className="border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300"
           >
-            <UploadCloud className="h-3.5 w-3.5 mr-1.5 text-zinc-400" />
+            <UploadCloud className="h-3.5 w-3.5 mr-1.5 text-zinc-500 dark:text-zinc-400" />
             Upload JUnit / JSON Report
           </Button>
 
@@ -270,14 +270,14 @@ Ensure all failed executions automatically create defects and attach execution l
       </div>
 
       {sampleSuccess && (
-        <div className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs flex items-center justify-between">
+        <div className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs flex items-center justify-between font-medium">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="h-4 w-4 shrink-0" />
             <span>{sampleSuccess}</span>
           </div>
           <a
             href={`/projects/${projectId}/tests`}
-            className="text-xs text-emerald-300 font-semibold underline flex items-center gap-1"
+            className="text-xs text-emerald-600 dark:text-emerald-300 font-semibold underline flex items-center gap-1"
           >
             View Test Cases <ArrowRight className="h-3 w-3" />
           </a>
@@ -286,7 +286,7 @@ Ensure all failed executions automatically create defects and attach execution l
 
       {/* Tabs */}
       <Tabs defaultValue="agent">
-        <TabsList className="bg-zinc-900 border border-zinc-800">
+        <TabsList className="bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
           <TabsTrigger value="agent">
             <Bot className="h-3.5 w-3.5 mr-1.5" />
             AI Agent Instructions
@@ -303,15 +303,15 @@ Ensure all failed executions automatically create defects and attach execution l
 
         {/* Tab 1: AI Agent */}
         <TabsContent value="agent" className="space-y-4 pt-3">
-          <Card className="border-zinc-800 bg-zinc-900/40">
+          <Card className="border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 shadow-sm">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="text-sm font-semibold text-zinc-100 flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-blue-400" />
+                  <CardTitle className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-blue-500 dark:text-blue-400" />
                     How to instruct your AI Agent
                   </CardTitle>
-                  <CardDescription className="text-xs text-zinc-400 mt-0.5">
+                  <CardDescription className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
                     Copy and paste this prompt into Antigravity, Cursor, Claude Code, or GitHub Copilot so it automatically creates and runs tests for you.
                   </CardDescription>
                 </div>
@@ -322,7 +322,7 @@ Ensure all failed executions automatically create defects and attach execution l
                 >
                   {copiedSection === 'agent' ? (
                     <>
-                      <Check className="h-3 w-3 mr-1 text-emerald-400" />
+                      <Check className="h-3 w-3 mr-1 text-emerald-500 dark:text-emerald-400" />
                       Copied!
                     </>
                   ) : (
@@ -344,15 +344,15 @@ Ensure all failed executions automatically create defects and attach execution l
 
         {/* Tab 2: cURL / REST API */}
         <TabsContent value="curl" className="space-y-4 pt-3">
-          <Card className="border-zinc-800 bg-zinc-900/40">
+          <Card className="border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 shadow-sm">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="text-sm font-semibold text-zinc-100 flex items-center gap-2">
-                    <Terminal className="h-4 w-4 text-emerald-400" />
+                  <CardTitle className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                    <Terminal className="h-4 w-4 text-emerald-500 dark:text-emerald-400" />
                     One-Command Direct Sync (cURL)
                   </CardTitle>
-                  <CardDescription className="text-xs text-zinc-400 mt-0.5">
+                  <CardDescription className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
                     Send test suites, step definitions, and execution run results directly via bash or python scripts.
                   </CardDescription>
                 </div>
@@ -363,7 +363,7 @@ Ensure all failed executions automatically create defects and attach execution l
                 >
                   {copiedSection === 'curl' ? (
                     <>
-                      <Check className="h-3 w-3 mr-1 text-emerald-400" />
+                      <Check className="h-3 w-3 mr-1 text-emerald-500 dark:text-emerald-400" />
                       Copied!
                     </>
                   ) : (
@@ -385,13 +385,13 @@ Ensure all failed executions automatically create defects and attach execution l
 
         {/* Tab 3: JUnit CI Pipeline */}
         <TabsContent value="junit" className="space-y-4 pt-3">
-          <Card className="border-zinc-800 bg-zinc-900/40">
+          <Card className="border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 shadow-sm">
             <CardHeader>
-              <CardTitle className="text-sm font-semibold text-zinc-100 flex items-center gap-2">
-                <FileCode className="h-4 w-4 text-purple-400" />
+              <CardTitle className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                <FileCode className="h-4 w-4 text-purple-500 dark:text-purple-400" />
                 GitHub Actions / CI Ingestion
               </CardTitle>
-              <CardDescription className="text-xs text-zinc-400 mt-0.5">
+              <CardDescription className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
                 Automatically ingest JUnit XML from Pytest, Maven, Jest, or Vitest into Test Manager in your CI workflow.
               </CardDescription>
             </CardHeader>

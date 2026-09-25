@@ -146,14 +146,14 @@ export function SignoffCard({
       <Card
         className={`border-2 ${
           openBlockers > 0
-            ? 'border-rose-500/30 bg-rose-950/10'
+            ? 'border-rose-500/30 bg-rose-500/5 dark:bg-rose-950/10'
             : isReleaseReady
-            ? 'border-emerald-500/40 bg-emerald-950/10'
-            : 'border-amber-500/30 bg-amber-950/10'
+            ? 'border-emerald-500/40 bg-emerald-500/5 dark:bg-emerald-950/10'
+            : 'border-amber-500/30 bg-amber-500/5 dark:bg-amber-950/10'
         }`}
       >
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-semibold tracking-tight text-zinc-100 flex items-center justify-between">
+          <CardTitle className="text-sm font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 flex items-center justify-between">
             <div className="flex items-center gap-2">
               {openBlockers > 0 ? (
                 <ShieldAlert className="h-5 w-5 text-rose-500" />
@@ -167,10 +167,10 @@ export function SignoffCard({
             <span
               className={`px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider ${
                 openBlockers > 0
-                  ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                  ? 'bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/30'
                   : isReleaseReady
-                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                  : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                  ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
+                  : 'bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30'
               }`}
             >
               {openBlockers > 0
@@ -184,14 +184,14 @@ export function SignoffCard({
         <CardContent>
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-1">
             <div className="text-xs space-y-1">
-              <p className="font-medium text-zinc-200">
+              <p className="font-medium text-zinc-800 dark:text-zinc-200">
                 {openBlockers > 0
                   ? `Release is currently blocked by ${openBlockers} unresolved blocker/critical defect(s). Gating policy requires zero blockers.`
                   : isReleaseReady
                   ? `Quality gating satisfied (${calculatedPassRate}% pass rate with 0 blockers). Authorized engineers may submit official release sign-off.`
                   : `Verification progress is at ${calculatedPassRate}% pass rate. Minimum release threshold is 90%.`}
               </p>
-              <div className="flex items-center gap-4 text-zinc-400 font-mono text-[11px]">
+              <div className="flex items-center gap-4 text-zinc-500 dark:text-zinc-400 font-mono text-[11px]">
                 <span>Pass Rate: {calculatedPassRate}%</span>
                 <span>•</span>
                 <span>Blockers / Criticals: {openBlockers}</span>
@@ -222,15 +222,15 @@ export function SignoffCard({
       {/* Decision Submission Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="relative w-full max-w-lg rounded-xl border border-zinc-800 bg-zinc-950 p-6 shadow-2xl text-zinc-100">
-            <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
+          <div className="relative w-full max-w-lg rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-6 shadow-2xl text-zinc-900 dark:text-zinc-100">
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-200 dark:border-zinc-800">
               <div className="flex items-center gap-2">
-                <ShieldCheck className="h-5 w-5 text-emerald-400" />
+                <ShieldCheck className="h-5 w-5 text-emerald-500 dark:text-emerald-400" />
                 <h3 className="text-sm font-semibold">Record Release Gate Sign-Off</h3>
               </div>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="text-zinc-500 hover:text-zinc-300 text-xs"
+                className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 text-xs"
               >
                 ✕
               </button>
@@ -238,7 +238,7 @@ export function SignoffCard({
 
             <form onSubmit={handleSubmitSignoff} className="space-y-4 pt-4">
               <div>
-                <label className="block text-xs font-medium text-zinc-300 mb-1">
+                <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                   Sign-Off Decision
                 </label>
                 <div className="grid grid-cols-2 gap-2">
@@ -247,8 +247,8 @@ export function SignoffCard({
                     onClick={() => setDecision('approved')}
                     className={`flex items-center justify-center gap-2 p-2.5 rounded-lg border text-xs font-medium transition-colors ${
                       decision === 'approved'
-                        ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400'
-                        : 'border-zinc-800 bg-zinc-900 text-zinc-400 hover:bg-zinc-800'
+                        ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold'
+                        : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
                     }`}
                   >
                     <CheckCircle className="h-4 w-4 text-emerald-500" />
@@ -259,8 +259,8 @@ export function SignoffCard({
                     onClick={() => setDecision('rejected')}
                     className={`flex items-center justify-center gap-2 p-2.5 rounded-lg border text-xs font-medium transition-colors ${
                       decision === 'rejected'
-                        ? 'border-rose-500 bg-rose-500/10 text-rose-400'
-                        : 'border-zinc-800 bg-zinc-900 text-zinc-400 hover:bg-zinc-800'
+                        ? 'border-rose-500 bg-rose-500/10 text-rose-600 dark:text-rose-400 font-semibold'
+                        : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
                     }`}
                   >
                     <XCircle className="h-4 w-4 text-rose-500" />
@@ -270,13 +270,13 @@ export function SignoffCard({
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-zinc-300 mb-1">
+                <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                   Authorizing Role / Signatory
                 </label>
                 <Select
                   value={role}
                   onChange={(e) => setRole(e.target.value as any)}
-                  className="bg-zinc-900 border-zinc-800 text-xs"
+                  className="text-xs"
                 >
                   <option value="architect">Lead Systems Architect (Ahmed Affes)</option>
                   <option value="eng_lead">Systems Engineering Co-Author (Friend)</option>
@@ -286,7 +286,7 @@ export function SignoffCard({
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-zinc-300 mb-1">
+                <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                   Sign-Off Rationale & Risk Assessment
                 </label>
                 <textarea
@@ -294,17 +294,18 @@ export function SignoffCard({
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Document gating assessment, test scope coverage, or justifications..."
-                  className="w-full rounded-md border border-zinc-800 bg-zinc-900 p-2.5 text-xs text-zinc-200 placeholder-zinc-500 focus:border-zinc-600 focus:outline-none"
+                  className="w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-2.5 text-xs text-zinc-900 dark:text-zinc-200 placeholder-zinc-400 dark:placeholder-zinc-500 focus:border-zinc-400 dark:focus:border-zinc-600 focus:outline-none"
                   required
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-zinc-800">
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-zinc-200 dark:border-zinc-800">
                 <Button
                   type="button"
                   variant="ghost"
                   onClick={() => setIsModalOpen(false)}
                   disabled={isSubmitting}
+                  className="text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"
                 >
                   Cancel
                 </Button>
@@ -312,7 +313,7 @@ export function SignoffCard({
                   type="submit"
                   variant="primary"
                   isLoading={isSubmitting}
-                  className="bg-blue-600 hover:bg-blue-500"
+                  className="bg-blue-600 hover:bg-blue-500 text-white"
                 >
                   Confirm & Sign
                 </Button>

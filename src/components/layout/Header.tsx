@@ -36,18 +36,23 @@ export function Header({
   const [isDark, setIsDark] = React.useState(false);
 
   React.useEffect(() => {
-    // Check initial dark mode
-    if (document.documentElement.classList.contains('dark')) {
-      setIsDark(true);
-    }
+    // Check initial dark mode from DOM or localStorage
+    const isDarkNow = document.documentElement.classList.contains('dark');
+    setIsDark(isDarkNow);
   }, []);
 
   const toggleDarkMode = () => {
     if (document.documentElement.classList.contains('dark')) {
       document.documentElement.classList.remove('dark');
+      try {
+        localStorage.setItem('morphfs_theme', 'light');
+      } catch (e) {}
       setIsDark(false);
     } else {
       document.documentElement.classList.add('dark');
+      try {
+        localStorage.setItem('morphfs_theme', 'dark');
+      } catch (e) {}
       setIsDark(true);
     }
   };
@@ -61,20 +66,20 @@ export function Header({
   const [coopMenuOpen, setCoopMenuOpen] = React.useState(false);
 
   return (
-    <header className="h-14 border-b border-zinc-200/80 dark:border-zinc-800 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md px-4 flex items-center justify-between gap-4 z-20 shrink-0">
+    <header className="h-14 border-b border-zinc-200/80 dark:border-zinc-800 bg-white/90 dark:bg-zinc-950/80 backdrop-blur-md px-4 flex items-center justify-between gap-4 z-20 shrink-0">
       {/* Left: MorphFS Brand & Project Identifier */}
       <div className="flex items-center gap-3 text-xs">
         <Link
           href={currentProject ? `/projects/${currentProject.id}` : '/projects'}
-          className="flex items-center gap-2 font-semibold text-zinc-900 dark:text-zinc-100 hover:text-purple-400 transition-colors"
+          className="flex items-center gap-2 font-semibold text-zinc-900 dark:text-zinc-100 hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
         >
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-purple-600/10 border border-purple-500/30 text-purple-400">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-purple-600/10 border border-purple-500/30 text-purple-600 dark:text-purple-400">
             <span className="font-mono text-xs font-bold">M</span>
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="font-bold tracking-tight">MorphFS</span>
-              <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-semibold bg-purple-500/10 text-purple-400 border border-purple-500/20">
+              <span className="font-bold tracking-tight text-zinc-900 dark:text-zinc-100">MorphFS</span>
+              <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-semibold bg-purple-100 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-500/20">
                 WIN-EDITION
               </span>
             </div>
@@ -92,33 +97,33 @@ export function Header({
           <button
             type="button"
             onClick={() => setCoopMenuOpen(!coopMenuOpen)}
-            className="flex items-center gap-2 px-2.5 py-1 rounded-full border border-purple-500/20 bg-purple-950/20 hover:bg-purple-900/30 transition-all text-xs"
+            className="flex items-center gap-2 px-2.5 py-1 rounded-full border border-purple-200 dark:border-purple-500/20 bg-purple-50 dark:bg-purple-950/20 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-all text-xs"
             title="Co-Op Team Collaboration Status"
           >
             <div className="flex -space-x-1.5">
               <div
-                className="h-5 w-5 rounded-full bg-purple-600 border border-zinc-900 flex items-center justify-center text-[9px] font-bold text-white shadow-sm ring-1 ring-emerald-500"
+                className="h-5 w-5 rounded-full bg-purple-600 border border-white dark:border-zinc-900 flex items-center justify-center text-[9px] font-bold text-white shadow-sm ring-1 ring-emerald-500"
                 title="Ahmed Affes (Lead Architect) - Online"
               >
                 AA
               </div>
               <div
-                className="h-5 w-5 rounded-full bg-blue-600 border border-zinc-900 flex items-center justify-center text-[9px] font-bold text-white shadow-sm ring-1 ring-emerald-500"
+                className="h-5 w-5 rounded-full bg-blue-600 border border-white dark:border-zinc-900 flex items-center justify-center text-[9px] font-bold text-white shadow-sm ring-1 ring-emerald-500"
                 title="Co-Author (Systems Engineer) - Online"
               >
                 CO
               </div>
               <div
-                className="h-5 w-5 rounded-full bg-emerald-600 border border-zinc-900 flex items-center justify-center text-[9px] font-bold text-white shadow-sm ring-1 ring-purple-400"
+                className="h-5 w-5 rounded-full bg-emerald-600 border border-white dark:border-zinc-900 flex items-center justify-center text-[9px] font-bold text-white shadow-sm ring-1 ring-purple-400"
                 title="Prof. Academic Advisor (Jury) - Reviewing"
               >
                 PR
               </div>
             </div>
-            <span className="text-[11px] font-mono font-medium text-purple-300 hidden sm:inline">
+            <span className="text-[11px] font-mono font-medium text-purple-700 dark:text-purple-300 hidden sm:inline">
               Co-Op Active (3)
             </span>
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
           </button>
 
           {/* Co-Op Collaboration Dropdown */}
@@ -128,70 +133,70 @@ export function Header({
                 className="fixed inset-0 z-40"
                 onClick={() => setCoopMenuOpen(false)}
               />
-              <div className="absolute left-1/2 -translate-x-1/2 top-9 z-50 w-72 rounded-xl border border-zinc-800 bg-zinc-900 p-3 shadow-2xl text-xs space-y-3 animate-in fade-in-50 zoom-in-95">
-                <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
-                  <div className="font-semibold text-zinc-100 flex items-center gap-1.5">
-                    <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+              <div className="absolute left-1/2 -translate-x-1/2 top-9 z-50 w-72 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-3 shadow-xl text-xs space-y-3 animate-in fade-in-50 zoom-in-95">
+                <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2">
+                  <div className="font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                     <span>MorphFS Co-Op Session</span>
                   </div>
-                  <span className="font-mono text-[10px] text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded">
+                  <span className="font-mono text-[10px] text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-500/10 px-1.5 py-0.5 rounded">
                     LIVE SYNC
                   </span>
                 </div>
 
                 <div className="space-y-2">
-                  <div className="flex items-start gap-2 p-1.5 rounded bg-zinc-950/60 border border-zinc-800/80">
+                  <div className="flex items-start gap-2 p-1.5 rounded bg-zinc-50 dark:bg-zinc-950/60 border border-zinc-200/80 dark:border-zinc-800/80">
                     <div className="h-6 w-6 rounded-full bg-purple-600 flex items-center justify-center text-[10px] font-bold text-white shrink-0 mt-0.5">
                       AA
                     </div>
                     <div className="min-w-0">
-                      <div className="font-semibold text-zinc-200">Ahmed Affes</div>
-                      <div className="text-[10px] text-purple-400 font-mono">
+                      <div className="font-semibold text-zinc-900 dark:text-zinc-200">Ahmed Affes</div>
+                      <div className="text-[10px] text-purple-600 dark:text-purple-400 font-mono">
                         Lead Systems Architect & Core Author
                       </div>
-                      <div className="text-[10px] text-zinc-400 mt-0.5">
+                      <div className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5">
                         Authoring Crash Consistency & Invariant Suites
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex items-start gap-2 p-1.5 rounded bg-zinc-950/60 border border-zinc-800/80">
+                  <div className="flex items-start gap-2 p-1.5 rounded bg-zinc-50 dark:bg-zinc-950/60 border border-zinc-200/80 dark:border-zinc-800/80">
                     <div className="h-6 w-6 rounded-full bg-blue-600 flex items-center justify-center text-[10px] font-bold text-white shrink-0 mt-0.5">
                       CO
                     </div>
                     <div className="min-w-0">
-                      <div className="font-semibold text-zinc-200">Engineering Co-Author</div>
-                      <div className="text-[10px] text-blue-400 font-mono">
+                      <div className="font-semibold text-zinc-900 dark:text-zinc-200">Engineering Co-Author</div>
+                      <div className="text-[10px] text-blue-600 dark:text-blue-400 font-mono">
                         MFP Sync & Windows Shell Co-Engineer
                       </div>
-                      <div className="text-[10px] text-zinc-400 mt-0.5">
+                      <div className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5">
                         Executing QEMU & Benchmark Test Cycles
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex items-start gap-2 p-1.5 rounded bg-zinc-950/60 border border-zinc-800/80">
+                  <div className="flex items-start gap-2 p-1.5 rounded bg-zinc-50 dark:bg-zinc-950/60 border border-zinc-200/80 dark:border-zinc-800/80">
                     <div className="h-6 w-6 rounded-full bg-emerald-600 flex items-center justify-center text-[10px] font-bold text-white shrink-0 mt-0.5">
                       PR
                     </div>
                     <div className="min-w-0">
-                      <div className="font-semibold text-zinc-200">Prof. Academic Advisor</div>
-                      <div className="text-[10px] text-emerald-400 font-mono">
+                      <div className="font-semibold text-zinc-900 dark:text-zinc-200">Prof. Academic Advisor</div>
+                      <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono">
                         PFE Graduation Jury Evaluator
                       </div>
-                      <div className="text-[10px] text-zinc-400 mt-0.5">
+                      <div className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5">
                         Reviewing Verification Dossier & Gate Sign-Offs
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="border-t border-zinc-800 pt-2 flex items-center justify-between text-[10px] text-zinc-400">
+                <div className="border-t border-zinc-100 dark:border-zinc-800 pt-2 flex items-center justify-between text-[10px] text-zinc-500 dark:text-zinc-400">
                   <span>Milestone 4: Capstone Defense</span>
                   <Link
                     href={currentProject ? `/projects/${currentProject.id}/members` : '#'}
                     onClick={() => setCoopMenuOpen(false)}
-                    className="text-purple-400 hover:underline"
+                    className="text-purple-600 dark:text-purple-400 hover:underline"
                   >
                     View Roster →
                   </Link>
@@ -206,7 +211,7 @@ export function Header({
           <button
             type="button"
             onClick={onOpenCommandPalette}
-            className="w-full flex items-center justify-between rounded-md border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs text-zinc-400 shadow-sm transition-colors hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900/60 dark:hover:border-zinc-700"
+            className="w-full flex items-center justify-between rounded-md border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs text-zinc-500 shadow-sm transition-colors hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-400 dark:hover:border-zinc-700"
           >
             <div className="flex items-center gap-2">
               <Search className="h-3.5 w-3.5 text-zinc-400" />
@@ -224,7 +229,7 @@ export function Header({
         {currentProject && (
           <>
             <Link href={`/projects/${currentProject.id}/tests/new`}>
-              <Button size="sm" variant="outline" className="hidden sm:inline-flex border-zinc-800">
+              <Button size="sm" variant="outline" className="hidden sm:inline-flex border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300">
                 <Plus className="mr-1.5 h-3.5 w-3.5" />
                 New Case
               </Button>

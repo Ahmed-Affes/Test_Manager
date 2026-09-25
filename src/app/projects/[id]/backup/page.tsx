@@ -90,42 +90,42 @@ export default function BackupPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800 pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-200 dark:border-zinc-800 pb-5">
         <div>
           <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20">
+            <span className="p-1.5 rounded-lg bg-blue-500/10 text-blue-500 dark:text-blue-400 border border-blue-500/20">
               <DownloadCloud className="h-4 w-4" />
             </span>
-            <h1 className="text-xl font-bold tracking-tight text-zinc-100">
+            <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
               Backup & Disaster Recovery
             </h1>
           </div>
-          <p className="text-xs text-zinc-400 mt-1">
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
             Export complete verified project archives including test definitions, execution history, and defects.
           </p>
         </div>
       </div>
 
       {statusMsg && (
-        <div className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs flex items-center gap-2">
+        <div className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs flex items-center gap-2 font-medium">
           <CheckCircle2 className="h-4 w-4 shrink-0" />
           <span>{statusMsg}</span>
         </div>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="border-zinc-800 bg-zinc-900/40">
+        <Card className="border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-sm font-semibold text-zinc-100 flex items-center gap-2">
-              <Database className="h-4 w-4 text-blue-400" />
+            <CardTitle className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+              <Database className="h-4 w-4 text-blue-500 dark:text-blue-400" />
               Export Project Archive
             </CardTitle>
-            <CardDescription className="text-xs text-zinc-400">
+            <CardDescription className="text-xs text-zinc-500 dark:text-zinc-400">
               Download complete project state as a standalone JSON backup file.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <p className="text-xs text-zinc-400 leading-relaxed">
+            <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
               Preserves all test suites, steps, monotonic run numbers, defect linkages, and environment configurations for compliance and archival.
             </p>
             <Button
@@ -140,22 +140,22 @@ export default function BackupPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-zinc-800 bg-zinc-900/40">
+        <Card className="border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-sm font-semibold text-zinc-100 flex items-center gap-2">
-              <UploadCloud className="h-4 w-4 text-purple-400" />
+            <CardTitle className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+              <UploadCloud className="h-4 w-4 text-purple-500 dark:text-purple-400" />
               Restore / Import Archive
             </CardTitle>
-            <CardDescription className="text-xs text-zinc-400">
+            <CardDescription className="text-xs text-zinc-500 dark:text-zinc-400">
               Inspect or restore a previously exported Test Manager project backup.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <p className="text-xs text-zinc-400 leading-relaxed">
-              Upload a valid <code className="text-blue-400">.json</code> archive to verify checksums and import test cases into this workspace.
+            <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+              Upload a valid <code className="text-blue-600 dark:text-blue-400 font-mono">.json</code> archive to verify checksums and import test cases into this workspace.
             </p>
-            <label className="inline-flex items-center justify-center cursor-pointer px-3 py-1.5 rounded-md text-xs font-medium border border-zinc-700 bg-zinc-800 hover:bg-zinc-700 text-zinc-100 transition">
-              <UploadCloud className="h-3.5 w-3.5 mr-1.5 text-zinc-400" />
+            <label className="inline-flex items-center justify-center cursor-pointer px-3 py-1.5 rounded-md text-xs font-medium border border-zinc-200 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100 transition shadow-sm">
+              <UploadCloud className="h-3.5 w-3.5 mr-1.5 text-zinc-500 dark:text-zinc-400" />
               Select Archive File
               <input
                 type="file"

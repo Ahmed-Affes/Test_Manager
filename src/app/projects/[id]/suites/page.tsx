@@ -98,13 +98,13 @@ export default function SuitesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800 pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-200 dark:border-zinc-800 pb-4">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-zinc-100 flex items-center gap-2">
+          <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
             <FolderTree className="h-5 w-5 text-blue-500" />
-            Test Suites
+            Verification Suites
           </h1>
-          <p className="text-xs text-zinc-400 mt-0.5">
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
             Organize test procedures into structured suites, functional domains, and verification modules
           </p>
         </div>
@@ -124,13 +124,13 @@ export default function SuitesPage() {
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-36 rounded-xl bg-zinc-900/40 border border-zinc-800 animate-pulse" />
+            <div key={i} className="h-36 rounded-xl bg-zinc-100 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 animate-pulse" />
           ))}
         </div>
       ) : suites.length === 0 ? (
-        <div className="p-12 text-center border border-dashed rounded-xl border-zinc-800 bg-zinc-900/20 space-y-3">
-          <FolderTree className="h-10 w-10 text-zinc-600 mx-auto" />
-          <h3 className="text-sm font-semibold text-zinc-300">No Test Suites Yet</h3>
+        <div className="p-12 text-center border border-dashed rounded-xl border-zinc-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-900/20 space-y-3">
+          <FolderTree className="h-10 w-10 text-zinc-400 dark:text-zinc-600 mx-auto" />
+          <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-300">No Test Suites Yet</h3>
           <p className="text-xs text-zinc-500 max-w-sm mx-auto">
             Group your test cases by feature area, release module, or integration surface.
           </p>
@@ -162,11 +162,11 @@ export default function SuitesPage() {
             return (
               <div
                 key={suite.id}
-                className="p-5 rounded-xl border border-zinc-800 bg-zinc-900/40 hover:border-zinc-700 transition-all flex flex-col justify-between group"
+                className="p-5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 hover:border-zinc-300 dark:hover:border-zinc-700 shadow-sm transition-all flex flex-col justify-between group"
               >
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20">
+                    <span className="text-xs font-mono text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20">
                       Suite
                     </span>
                     <span className="text-xs font-mono text-zinc-500">
@@ -174,24 +174,24 @@ export default function SuitesPage() {
                     </span>
                   </div>
 
-                  <h3 className="text-base font-bold text-zinc-100 group-hover:text-blue-400 transition-colors">
+                  <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                     {suite.name}
                   </h3>
 
                   {suite.description && (
-                    <p className="text-xs text-zinc-400 line-clamp-2 leading-relaxed">
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 line-clamp-2 leading-relaxed">
                       {suite.description}
                     </p>
                   )}
                 </div>
 
                 {/* Mini progress bar if cases exist */}
-                <div className="pt-4 mt-4 border-t border-zinc-800/80 space-y-2">
-                  <div className="flex items-center justify-between text-[11px] font-mono text-zinc-400">
+                <div className="pt-4 mt-4 border-t border-zinc-100 dark:border-zinc-800/80 space-y-2">
+                  <div className="flex items-center justify-between text-[11px] font-mono text-zinc-500 dark:text-zinc-400">
                     <span>Pass Coverage</span>
-                    <span className="text-zinc-200 font-bold">{passPercent}%</span>
+                    <span className="text-zinc-900 dark:text-zinc-200 font-bold">{passPercent}%</span>
                   </div>
-                  <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden flex">
+                  <div className="h-1.5 w-full bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden flex">
                     <div
                       className="bg-emerald-500 h-full"
                       style={{ width: `${passPercent}%` }}
@@ -207,7 +207,7 @@ export default function SuitesPage() {
                   <div className="flex items-center justify-between pt-2">
                     <Link
                       href={`/projects/${projectId}/tests`}
-                      className="text-xs text-zinc-400 hover:text-zinc-200 font-medium flex items-center gap-1 group-hover:translate-x-0.5 transition-transform"
+                      className="text-xs text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200 font-medium flex items-center gap-1 group-hover:translate-x-0.5 transition-transform"
                     >
                       View Cases
                       <ArrowRight className="h-3 w-3" />
@@ -228,20 +228,19 @@ export default function SuitesPage() {
       >
         <form onSubmit={handleCreateSuite} className="space-y-4">
           <div>
-            <label className="text-xs font-semibold text-zinc-300 block mb-1">
+            <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">
               Suite Name *
             </label>
             <Input
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g., Authentication & Authorization, Payment Gateway"
-              className="bg-zinc-950 border-zinc-800"
+              placeholder="e.g., Disk Layout & Superblock, COW B-Tree Index"
             />
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-zinc-300 block mb-1">
+            <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">
               Description (Optional)
             </label>
             <Textarea
@@ -249,11 +248,11 @@ export default function SuitesPage() {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Scope, test objectives, and target subsystems..."
-              className="bg-zinc-950 border-zinc-800 text-xs"
+              className="text-xs"
             />
           </div>
 
-          <div className="flex justify-end gap-2 pt-2 border-t border-zinc-800">
+          <div className="flex justify-end gap-2 pt-2 border-t border-zinc-200 dark:border-zinc-800">
             <Button
               type="button"
               variant="outline"

@@ -217,13 +217,13 @@ export default function IssuesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800 pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-200 dark:border-zinc-800 pb-4">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-zinc-100 flex items-center gap-2">
+          <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
             <Bug className="h-5 w-5 text-rose-500" />
-            Defects & Discrepancies
+            Crash & Defect Issues
           </h1>
-          <p className="text-xs text-zinc-400 mt-0.5">
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
             Test-linked defects, verification discrepancies, root causes, and retest validation
           </p>
         </div>
@@ -241,43 +241,43 @@ export default function IssuesPage() {
 
       {/* KPI Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/40">
-          <span className="text-[11px] font-mono text-zinc-400 uppercase">Open Defects</span>
-          <div className="text-2xl font-bold font-mono text-amber-400 mt-1">{openIssues}</div>
+        <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 shadow-sm">
+          <span className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400 uppercase">Open Defects</span>
+          <div className="text-2xl font-bold font-mono text-amber-500 dark:text-amber-400 mt-1">{openIssues}</div>
         </div>
 
-        <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/40">
-          <span className="text-[11px] font-mono text-zinc-400 uppercase">Blocker / Critical</span>
-          <div className="text-2xl font-bold font-mono text-rose-400 mt-1">{blockerIssues}</div>
+        <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 shadow-sm">
+          <span className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400 uppercase">Blocker / Critical</span>
+          <div className="text-2xl font-bold font-mono text-rose-500 dark:text-rose-400 mt-1">{blockerIssues}</div>
         </div>
 
-        <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/40">
-          <span className="text-[11px] font-mono text-zinc-400 uppercase">Verified Resolved</span>
-          <div className="text-2xl font-bold font-mono text-emerald-400 mt-1">{resolvedIssues}</div>
+        <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 shadow-sm">
+          <span className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400 uppercase">Verified Resolved</span>
+          <div className="text-2xl font-bold font-mono text-emerald-500 dark:text-emerald-400 mt-1">{resolvedIssues}</div>
         </div>
 
-        <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/40">
-          <span className="text-[11px] font-mono text-zinc-400 uppercase">Total Logged</span>
-          <div className="text-2xl font-bold font-mono text-zinc-100 mt-1">{totalIssues}</div>
+        <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 shadow-sm">
+          <span className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400 uppercase">Total Logged</span>
+          <div className="text-2xl font-bold font-mono text-zinc-900 dark:text-zinc-100 mt-1">{totalIssues}</div>
         </div>
       </div>
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px] max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-400" />
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search by bug key, title, root cause..."
-            className="pl-9 h-8 text-xs bg-zinc-900/60 border-zinc-800"
+            className="pl-9 h-8 text-xs"
           />
         </div>
 
         <Select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="w-36 h-8 text-xs bg-zinc-900/60 border-zinc-800"
+          className="w-36 h-8 text-xs"
         >
           <option value="all">All Statuses</option>
           <option value="open">Open</option>
@@ -290,7 +290,7 @@ export default function IssuesPage() {
         <Select
           value={severityFilter}
           onChange={(e) => setSeverityFilter(e.target.value)}
-          className="w-36 h-8 text-xs bg-zinc-900/60 border-zinc-800"
+          className="w-36 h-8 text-xs"
         >
           <option value="all">All Severities</option>
           <option value="blocker">Blocker</option>
@@ -309,13 +309,13 @@ export default function IssuesPage() {
       {loading ? (
         <div className="space-y-2">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-14 rounded-lg bg-zinc-900/40 border border-zinc-800 animate-pulse" />
+            <div key={i} className="h-14 rounded-lg bg-zinc-100 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 animate-pulse" />
           ))}
         </div>
       ) : filteredIssues.length === 0 ? (
-        <div className="p-12 text-center border border-dashed rounded-xl border-zinc-800 bg-zinc-900/20 space-y-2">
-          <Bug className="h-8 w-8 text-zinc-600 mx-auto" />
-          <h3 className="text-sm font-semibold text-zinc-300">No Defects Found</h3>
+        <div className="p-12 text-center border border-dashed rounded-xl border-zinc-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-900/20 space-y-2">
+          <Bug className="h-8 w-8 text-zinc-400 dark:text-zinc-600 mx-auto" />
+          <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-300">No Defects Logged</h3>
           <p className="text-xs text-zinc-500">
             {issues.length === 0
               ? 'Zero defects filed for this project. Clean verification bill of health.'
@@ -323,9 +323,9 @@ export default function IssuesPage() {
           </p>
         </div>
       ) : (
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 overflow-hidden shadow-sm">
+        <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 overflow-hidden shadow-sm">
           <table className="w-full text-left text-xs">
-            <thead className="bg-zinc-900/80 border-b border-zinc-800 text-zinc-400 font-medium">
+            <thead className="bg-zinc-50 dark:bg-zinc-900/80 border-b border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 font-medium">
               <tr>
                 <th className="p-3 w-32">Key</th>
                 <th className="p-3">Title & Linked Test</th>
@@ -336,22 +336,22 @@ export default function IssuesPage() {
                 <th className="p-3 w-32 text-right">Verification</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-800/60 font-mono">
+            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800/60 font-mono">
               {filteredIssues.map((issue) => (
-                <tr key={issue.id} className="hover:bg-zinc-800/30 transition-colors">
-                  <td className="p-3 font-bold text-rose-400">
+                <tr key={issue.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
+                  <td className="p-3 font-bold text-rose-500 dark:text-rose-400">
                     {issue.issue_key}
                   </td>
 
                   <td className="p-3 font-sans">
                     <div className="space-y-0.5">
-                      <span className="font-medium text-zinc-200 block">
+                      <span className="font-medium text-zinc-900 dark:text-zinc-200 block">
                         {issue.title}
                       </span>
                       {issue.test_case && (
                         <Link
                           href={`/projects/${projectId}/tests/${issue.test_case.id}`}
-                          className="text-[11px] font-mono text-blue-400 hover:underline inline-flex items-center gap-1"
+                          className="text-[11px] font-mono text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1"
                         >
                           <span>Case: {issue.test_case.key}</span>
                           <span className="text-zinc-500 truncate max-w-xs">
@@ -366,8 +366,8 @@ export default function IssuesPage() {
                     <span
                       className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold ${
                         issue.severity === 'blocker' || issue.severity === 'critical'
-                          ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                          : 'bg-zinc-800 text-zinc-300'
+                          ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'
+                          : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300'
                       }`}
                     >
                       {issue.severity}

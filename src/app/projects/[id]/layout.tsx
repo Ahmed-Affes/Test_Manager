@@ -67,7 +67,7 @@ export default async function ProjectLayout({ children, params }: ProjectLayoutP
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-zinc-950 text-zinc-100">
+    <div className="flex h-screen overflow-hidden bg-zinc-100 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100">
       <Sidebar
         currentProject={project as Project}
         projects={(allProjects as Project[]) || []}
@@ -80,7 +80,7 @@ export default async function ProjectLayout({ children, params }: ProjectLayoutP
           user={userProfile}
         />
 
-        <main className="flex-1 overflow-y-auto p-6 md:p-8 bg-zinc-950">
+        <main className="flex-1 overflow-y-auto p-6 md:p-8 bg-zinc-50/60 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100">
           <div className="max-w-7xl mx-auto space-y-6">
             {children}
           </div>

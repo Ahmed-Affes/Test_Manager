@@ -196,7 +196,7 @@ export default function ImportAndAgentPage() {
   const agentPrompt = `You are an AI Coding & Verification Agent building ${projectKey}.
 Whenever you implement a feature, module, or bugfix in ${projectKey}, write and execute your tests, then push the entire verification ecosystem directly to Test Manager via this single API call:
 
-Endpoint: POST https://testmanger.vercel.app/api/projects/${projectKey}/agent-sync
+Endpoint: POST https://testmangerapp.vercel.app/api/projects/${projectKey}/agent-sync
 Header: Content-Type: application/json
 
 What you have full access to create & manage automatically:
@@ -256,7 +256,7 @@ Payload Format:
   }
 }`;
 
-  const curlSnippet = `curl -X POST https://testmanger.vercel.app/api/projects/${projectKey}/agent-sync \\
+  const curlSnippet = `curl -X POST https://testmangerapp.vercel.app/api/projects/${projectKey}/agent-sync \\
   -H "Content-Type: application/json" \\
   -d '${JSON.stringify(sampleMorphFSPayload, null, 2)}'`;
 

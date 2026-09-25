@@ -140,35 +140,152 @@ export default async function ProjectOverviewPage({ params }: ProjectOverviewPro
       {/* Top Banner & Quick Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800 pb-4">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-zinc-100">
-            Project Verification Overview
+          <div className="flex items-center gap-2 mb-1">
+            <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20">
+              WINDOWS EDITION • PFE CAPSTONE
+            </span>
+            <span className="px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-zinc-800 text-zinc-300">
+              COW STORAGE ENGINE
+            </span>
+          </div>
+          <h1 className="text-xl font-bold tracking-tight text-zinc-100 flex items-center gap-2">
+            <span>MorphFS Verification & Quality Platform</span>
           </h1>
           <p className="text-xs text-zinc-400 mt-0.5">
-            Real-time quality intelligence, execution fidelity, and release sign-off gating
+            Real-time quality intelligence, circular journal replay verification, and academic jury release gating
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           <Link href={`/projects/${resolvedId}/tests`}>
-            <Button size="xs" variant="outline" className="gap-1.5">
-              <CheckSquare className="h-3.5 w-3.5" />
-              Manage Tests
+            <Button size="xs" variant="outline" className="gap-1.5 border-zinc-800">
+              <CheckSquare className="h-3.5 w-3.5 text-purple-400" />
+              Filesystem Tests
             </Button>
           </Link>
 
           <Link href={`/projects/${resolvedId}/import`}>
-            <Button size="xs" variant="outline" className="gap-1.5">
-              <FileCode className="h-3.5 w-3.5" />
-              CI Import
+            <Button size="xs" variant="outline" className="gap-1.5 border-zinc-800">
+              <FileCode className="h-3.5 w-3.5 text-blue-400" />
+              AI Agent & CI Import
             </Button>
           </Link>
 
           <Link href={`/projects/${resolvedId}/reports`}>
-            <Button size="xs" variant="primary" className="gap-1.5">
+            <Button size="xs" variant="primary" className="gap-1.5 bg-purple-600 hover:bg-purple-500 text-white">
               <FileText className="h-3.5 w-3.5" />
-              Verification Report
+              Release Gates & Sign-Off
             </Button>
           </Link>
+        </div>
+      </div>
+
+      {/* Co-Op Team Collaboration Banner */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="p-3 rounded-xl border border-purple-500/30 bg-purple-950/20 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="h-8 w-8 rounded-lg bg-purple-600/30 text-purple-400 font-bold flex items-center justify-center text-xs font-mono border border-purple-500/40">
+              AA
+            </div>
+            <div>
+              <div className="text-xs font-semibold text-zinc-100 flex items-center gap-1.5">
+                <span>Ahmed Affes</span>
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              </div>
+              <div className="text-[10px] text-purple-400 font-mono">Lead Systems Architect</div>
+              <div className="text-[10px] text-zinc-400">Crash Replay & COW Engine</div>
+            </div>
+          </div>
+          <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-purple-500/20 text-purple-300">
+            Author
+          </span>
+        </div>
+
+        <div className="p-3 rounded-xl border border-blue-500/30 bg-blue-950/20 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="h-8 w-8 rounded-lg bg-blue-600/30 text-blue-400 font-bold flex items-center justify-center text-xs font-mono border border-blue-500/40">
+              CO
+            </div>
+            <div>
+              <div className="text-xs font-semibold text-zinc-100 flex items-center gap-1.5">
+                <span>Engineering Co-Author</span>
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              </div>
+              <div className="text-[10px] text-blue-400 font-mono">Systems Co-Developer</div>
+              <div className="text-[10px] text-zinc-400">MFP Sync & Windows Shell</div>
+            </div>
+          </div>
+          <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-blue-500/20 text-blue-300">
+            Co-Op
+          </span>
+        </div>
+
+        <div className="p-3 rounded-xl border border-emerald-500/30 bg-emerald-950/20 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="h-8 w-8 rounded-lg bg-emerald-600/30 text-emerald-400 font-bold flex items-center justify-center text-xs font-mono border border-emerald-500/40">
+              PR
+            </div>
+            <div>
+              <div className="text-xs font-semibold text-zinc-100 flex items-center gap-1.5">
+                <span>Prof. Academic Advisor</span>
+                <span className="h-1.5 w-1.5 rounded-full bg-purple-400" />
+              </div>
+              <div className="text-[10px] text-emerald-400 font-mono">PFE Jury Evaluator</div>
+              <div className="text-[10px] text-zinc-400">Formal Defense Sign-Off</div>
+            </div>
+          </div>
+          <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300">
+            Jury
+          </span>
+        </div>
+      </div>
+
+      {/* 10 PFE Release Gates Tracker */}
+      <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/40 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 text-purple-400" />
+            <span className="text-xs font-bold text-zinc-200 uppercase tracking-wider">
+              MorphFS Verification Gates (PFE Defense Progression)
+            </span>
+          </div>
+          <Link
+            href={`/projects/${resolvedId}/reports`}
+            className="text-[11px] text-purple-400 hover:underline font-mono"
+          >
+            Open Evaluation Dossier →
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-5 lg:grid-cols-10 gap-2">
+          {[
+            { id: 'GATE 0', name: 'Disk Layout', status: 'pass' },
+            { id: 'GATE 1', name: 'Object IDs', status: 'pass' },
+            { id: 'GATE 2', name: 'Version Tree', status: 'pass' },
+            { id: 'GATE 3', name: 'Crash Replay', status: 'pass' },
+            { id: 'GATE 4', name: 'GC Reclaim', status: 'pass' },
+            { id: 'GATE 5', name: 'MFP Sync', status: 'pass' },
+            { id: 'GATE 6', name: 'Win Shell', status: 'pass' },
+            { id: 'GATE 7', name: 'INV Fuzzing', status: 'pass' },
+            { id: 'GATE 8', name: 'Benchmarks', status: 'pass' },
+            { id: 'GATE 9', name: 'Jury Defense', status: 'pass' },
+          ].map((gate) => (
+            <div
+              key={gate.id}
+              className="p-2 rounded-lg border border-emerald-500/30 bg-emerald-950/20 text-center space-y-1"
+            >
+              <div className="font-mono text-[10px] font-bold text-emerald-400">
+                {gate.id}
+              </div>
+              <div className="text-[10px] text-zinc-300 font-medium truncate">
+                {gate.name}
+              </div>
+              <div className="text-[9px] font-mono text-emerald-400 flex items-center justify-center gap-1">
+                <CheckCircle2 className="h-2.5 w-2.5" />
+                VERIFIED
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 

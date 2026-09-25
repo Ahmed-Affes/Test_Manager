@@ -43,18 +43,18 @@ export function Sidebar({ currentProject, projects = [], userRole = 'tester' }: 
 
   const navItems = [
     {
-      title: 'Overview',
+      title: 'Architecture & Overview',
       href: `/projects/${projectId}`,
       icon: LayoutDashboard,
       exact: true,
     },
     {
-      title: 'Test Suites',
+      title: '10 Verification Suites',
       href: `/projects/${projectId}/suites`,
       icon: FolderKanban,
     },
     {
-      title: 'Test Cases',
+      title: 'Filesystem Test Cases',
       href: `/projects/${projectId}/tests`,
       icon: CheckSquare,
     },
@@ -64,32 +64,32 @@ export function Sidebar({ currentProject, projects = [], userRole = 'tester' }: 
       icon: PlaySquare,
     },
     {
-      title: 'Issues & Retests',
+      title: 'Crash & Defect Issues',
       href: `/projects/${projectId}/issues`,
       icon: Bug,
     },
     {
-      title: 'Evidence Vault',
+      title: 'Evidence Vault (fsck/Dumps)',
       href: `/projects/${projectId}/evidence`,
       icon: Camera,
     },
     {
-      title: 'Environments',
+      title: 'Target Environments',
       href: `/projects/${projectId}/environments`,
       icon: Server,
     },
     {
-      title: 'Test Plans',
+      title: 'PFE Milestones 1-4',
       href: `/projects/${projectId}/plans`,
       icon: CalendarRange,
     },
     {
-      title: 'Verification Report',
+      title: 'Release Gates & Sign-Off',
       href: `/projects/${projectId}/reports`,
       icon: FileText,
     },
     {
-      title: 'Backup & Restore',
+      title: 'Snapshots & Backup',
       href: `/projects/${projectId}/backup`,
       icon: DownloadCloud,
     },
@@ -99,17 +99,17 @@ export function Sidebar({ currentProject, projects = [], userRole = 'tester' }: 
       icon: FileCode,
     },
     {
-      title: 'Team & Roles',
+      title: 'Co-Op Team & Roles',
       href: `/projects/${projectId}/members`,
       icon: Users,
     },
     {
-      title: 'Audit Trail',
+      title: 'Invariant Audit Trail',
       href: `/projects/${projectId}/activity`,
       icon: History,
     },
     {
-      title: 'Settings',
+      title: 'Engine Settings',
       href: `/projects/${projectId}/settings`,
       icon: Settings,
     },
@@ -132,17 +132,16 @@ export function Sidebar({ currentProject, projects = [], userRole = 'tester' }: 
             >
               <div className="flex items-center gap-2 min-w-0">
                 <div
-                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded font-mono text-xs font-bold text-white shadow-sm"
-                  style={{ backgroundColor: currentProject?.accent_color || '#2563eb' }}
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded font-mono text-xs font-bold text-white shadow-sm bg-purple-600"
                 >
-                  {currentProject?.key ? currentProject.key.slice(0, 3) : 'TM'}
+                  M
                 </div>
                 <div className="min-w-0 truncate">
-                  <div className="truncate text-xs font-semibold text-zinc-900 dark:text-zinc-100">
-                    {currentProject?.name || 'Test Manager'}
+                  <div className="truncate text-xs font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-1">
+                    <span>{currentProject?.name || 'MorphFS'}</span>
                   </div>
-                  <div className="truncate font-mono text-[10px] text-zinc-500 dark:text-zinc-400">
-                    {currentProject?.key || 'SELECT'} • {userRole.toUpperCase()}
+                  <div className="truncate font-mono text-[10px] text-purple-400">
+                    Windows Edition • PFE
                   </div>
                 </div>
               </div>
@@ -247,8 +246,8 @@ export function Sidebar({ currentProject, projects = [], userRole = 'tester' }: 
       <div className="border-t border-zinc-200/80 dark:border-zinc-800 p-2 flex items-center justify-between">
         {!collapsed && (
           <div className="flex items-center gap-1.5 px-1.5 text-[11px] text-zinc-400">
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            <span>v1.0.0 Prod</span>
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-purple-500" />
+            <span>MorphFS v2.4 (Win11)</span>
           </div>
         )}
         <Button

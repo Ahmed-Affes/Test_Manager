@@ -264,24 +264,24 @@ export function SignoffCard({
                     }`}
                   >
                     <XCircle className="h-4 w-4 text-rose-500" />
-                    Reject / Hold
+                    Hold / Require Verification
                   </button>
                 </div>
               </div>
 
               <div>
                 <label className="block text-xs font-medium text-zinc-300 mb-1">
-                  Authorizing Role
+                  Authorizing Role / Signatory
                 </label>
                 <Select
                   value={role}
                   onChange={(e) => setRole(e.target.value as any)}
                   className="bg-zinc-900 border-zinc-800 text-xs"
                 >
-                  <option value="qa_lead">QA Lead</option>
-                  <option value="architect">Test Architect</option>
-                  <option value="release_manager">Release Manager</option>
-                  <option value="eng_lead">Engineering Lead</option>
+                  <option value="architect">Lead Systems Architect (Ahmed Affes)</option>
+                  <option value="eng_lead">Systems Engineering Co-Author (Friend)</option>
+                  <option value="qa_lead">Academic Advisor & Jury President (Professor)</option>
+                  <option value="release_manager">PFE Capstone Defense Jury Committee</option>
                 </Select>
               </div>
 

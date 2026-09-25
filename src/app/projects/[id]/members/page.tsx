@@ -104,25 +104,107 @@ export default function MembersPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800 pb-5">
         <div>
           <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20">
+            <span className="p-1.5 rounded-lg bg-purple-500/10 text-purple-400 border border-purple-500/20">
               <Users className="h-4 w-4" />
             </span>
             <h1 className="text-xl font-bold tracking-tight text-zinc-100">
-              Team & Roles
+              MorphFS Co-Op Engineering Team & Academic Jury
             </h1>
           </div>
           <p className="text-xs text-zinc-400 mt-1">
-            Manage engineering workspace access, tester permissions, and quality sign-off authorities.
+            Collaborative systems engineering roles, live test execution permissions, and formal PFE defense sign-off authorities.
           </p>
         </div>
 
-        <Button size="sm" variant="primary" onClick={() => setIsInviteOpen(true)}>
+        <Button size="sm" variant="primary" onClick={() => setIsInviteOpen(true)} className="bg-purple-600 hover:bg-purple-500 text-white">
           <UserPlus className="h-3.5 w-3.5 mr-1.5" />
-          Invite Team Member
+          Invite Contributor
         </Button>
       </div>
 
-      <div className="grid gap-3">
+      {/* Core PFE Co-Op Roles */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="p-4 rounded-xl border border-purple-500/30 bg-purple-950/20 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="h-10 w-10 rounded-xl bg-purple-600/30 text-purple-400 font-bold flex items-center justify-center font-mono border border-purple-500/40">
+              AA
+            </div>
+            <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-purple-500/20 text-purple-300">
+              LEAD AUTHOR
+            </span>
+          </div>
+          <div>
+            <div className="text-sm font-bold text-zinc-100 flex items-center gap-1.5">
+              <span>Ahmed Affes</span>
+              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" title="Online" />
+            </div>
+            <div className="text-[11px] text-purple-400 font-mono">Lead Systems Architect</div>
+            <div className="text-xs text-zinc-400 mt-1">
+              Core storage engine, copy-on-write, circular journal, crash recovery & invariant fuzzing suites.
+            </div>
+          </div>
+          <div className="text-[10px] font-mono text-zinc-500 pt-2 border-t border-purple-500/20 flex items-center justify-between">
+            <span>Privileges: Full Admin / Commits</span>
+            <span className="text-emerald-400">ACTIVE</span>
+          </div>
+        </div>
+
+        <div className="p-4 rounded-xl border border-blue-500/30 bg-blue-950/20 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="h-10 w-10 rounded-xl bg-blue-600/30 text-blue-400 font-bold flex items-center justify-center font-mono border border-blue-500/40">
+              CO
+            </div>
+            <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-blue-500/20 text-blue-300">
+              CO-AUTHOR
+            </span>
+          </div>
+          <div>
+            <div className="text-sm font-bold text-zinc-100 flex items-center gap-1.5">
+              <span>Engineering Co-Author</span>
+              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" title="Online" />
+            </div>
+            <div className="text-[11px] text-blue-400 font-mono">Systems Co-Developer</div>
+            <div className="text-xs text-zinc-400 mt-1">
+              MFP sync protocol, Windows Explorer shell context menus, Control Center & benchmarking.
+            </div>
+          </div>
+          <div className="text-[10px] font-mono text-zinc-500 pt-2 border-t border-blue-500/20 flex items-center justify-between">
+            <span>Privileges: Test Execution & Retests</span>
+            <span className="text-emerald-400">ACTIVE</span>
+          </div>
+        </div>
+
+        <div className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-950/20 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="h-10 w-10 rounded-xl bg-emerald-600/30 text-emerald-400 font-bold flex items-center justify-center font-mono border border-emerald-500/40">
+              PR
+            </div>
+            <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300">
+              ACADEMIC JURY
+            </span>
+          </div>
+          <div>
+            <div className="text-sm font-bold text-zinc-100 flex items-center gap-1.5">
+              <span>Prof. Academic Advisor</span>
+              <span className="h-2 w-2 rounded-full bg-purple-400" title="Reviewing" />
+            </div>
+            <div className="text-[11px] text-emerald-400 font-mono">PFE Jury President & Evaluator</div>
+            <div className="text-xs text-zinc-400 mt-1">
+              Verification audit dossier review, reference model inspection & formal graduation release gate sign-off.
+            </div>
+          </div>
+          <div className="text-[10px] font-mono text-zinc-500 pt-2 border-t border-emerald-500/20 flex items-center justify-between">
+            <span>Privileges: Gating Authority & Audit</span>
+            <span className="text-purple-400">REVIEWING</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <h3 className="text-xs font-bold text-zinc-300 uppercase tracking-wider">
+          Workspace Registered Accounts
+        </h3>
+        <div className="grid gap-3">
         {loading ? (
           <div className="p-12 text-center text-xs text-zinc-500 font-mono">
             Loading team roster...
@@ -170,6 +252,7 @@ export default function MembersPage() {
             </div>
           ))
         )}
+        </div>
       </div>
 
       <Modal

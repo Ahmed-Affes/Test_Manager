@@ -218,23 +218,47 @@ export default function ProjectsPage() {
               const passCount = runs.filter((r: any) => r.status === 'pass').length;
               const passRate = runs.length > 0 ? Math.round((passCount / runs.length) * 100) : 0;
 
+              const isMorph = project.key === 'MORPH' || project.name.toLowerCase().includes('morphfs');
+
               return (
                 <Link
                   key={project.id}
                   href={`/projects/${project.id}`}
-                  className="group relative flex flex-col justify-between p-5 rounded-xl border border-zinc-800 bg-zinc-900/40 hover:bg-zinc-900/80 hover:border-zinc-700 transition-all shadow-sm"
+                  className={`group relative flex flex-col justify-between p-5 rounded-xl border transition-all shadow-sm ${
+                    isMorph
+                      ? 'border-purple-500/40 bg-purple-950/20 hover:bg-purple-950/30 hover:border-purple-400 ring-1 ring-purple-500/20'
+                      : 'border-zinc-800 bg-zinc-900/40 hover:bg-zinc-900/80 hover:border-zinc-700'
+                  }`}
                 >
                   <div className="space-y-3">
                     <div className="flex items-start justify-between gap-2">
-                      <span className="font-mono text-xs px-2 py-0.5 rounded bg-blue-500/10 border border-blue-500/20 text-blue-400 font-bold">
-                        {project.key}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className={`font-mono text-xs px-2 py-0.5 rounded font-bold ${
+                            isMorph
+                              ? 'bg-purple-500/20 border border-purple-500/30 text-purple-300'
+                              : 'bg-blue-500/10 border border-blue-500/20 text-blue-400'
+                          }`}
+                        >
+                          {project.key}
+                        </span>
+                        {isMorph && (
+                          <span className="font-mono text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-semibold">
+                            CO-OP ACTIVE
+                          </span>
+                        )}
+                      </div>
                       <ArrowRight className="h-4 w-4 text-zinc-500 group-hover:text-zinc-200 group-hover:translate-x-0.5 transition-all" />
                     </div>
 
                     <div>
-                      <h3 className="font-bold text-sm text-zinc-100 group-hover:text-white transition-colors">
+                      <h3 className="font-bold text-sm text-zinc-100 group-hover:text-white transition-colors flex items-center gap-1.5">
                         {project.name}
+                        {isMorph && (
+                          <span className="text-[10px] font-normal text-purple-400 font-mono">
+                            (Windows Edition)
+                          </span>
+                        )}
                       </h3>
                       {project.description && (
                         <p className="text-xs text-zinc-400 mt-1 line-clamp-2 leading-relaxed">

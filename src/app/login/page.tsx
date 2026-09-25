@@ -12,7 +12,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get('redirectTo') || '/projects';
+  const defaultMorphFsId = '797d5ca0-e739-46ef-909b-b623c91fe657';
+  const redirectTo = searchParams.get('redirectTo') || `/projects/${defaultMorphFsId}`;
 
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
@@ -45,27 +46,33 @@ function LoginForm() {
     }
   };
 
-  const handleDemoLogin = async () => {
-    setEmail('demo.lead@testmanager.dev');
-    setPassword('TestingVerification2026!');
+  const handleCoopProfileLogin = async (
+    profileEmail: string,
+    profileName: string,
+    roleTitle: string
+  ) => {
+    const fixedPassword = 'MorphFS2026Verification!';
+    setEmail(profileEmail);
+    setPassword(fixedPassword);
     setError(null);
     setLoading(true);
 
     try {
       // First try to sign in
       let { error: signInErr } = await supabase.auth.signInWithPassword({
-        email: 'demo.lead@testmanager.dev',
-        password: 'TestingVerification2026!',
+        email: profileEmail,
+        password: fixedPassword,
       });
 
       // If user doesn't exist, sign them up on the fly
       if (signInErr && signInErr.message.includes('Invalid login credentials')) {
         const { error: signUpErr } = await supabase.auth.signUp({
-          email: 'demo.lead@testmanager.dev',
-          password: 'TestingVerification2026!',
+          email: profileEmail,
+          password: fixedPassword,
           options: {
             data: {
-              full_name: 'Lead Test Architect',
+              full_name: profileName,
+              role_title: roleTitle,
             },
           },
         });
@@ -73,8 +80,8 @@ function LoginForm() {
 
         // Sign in after signup
         const { error: secondSignInErr } = await supabase.auth.signInWithPassword({
-          email: 'demo.lead@testmanager.dev',
-          password: 'TestingVerification2026!',
+          email: profileEmail,
+          password: fixedPassword,
         });
         if (secondSignInErr) throw secondSignInErr;
       } else if (signInErr) {
@@ -84,7 +91,7 @@ function LoginForm() {
       router.push(redirectTo);
       router.refresh();
     } catch (err: any) {
-      setError(err.message || 'Demo authentication failed.');
+      setError(err.message || 'Co-op profile authentication failed.');
     } finally {
       setLoading(false);
     }
@@ -95,24 +102,29 @@ function LoginForm() {
       <div className="w-full max-w-md space-y-6">
         {/* Brand Header */}
         <div className="flex flex-col items-center text-center space-y-2">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600/10 border border-blue-500/20 text-blue-500 shadow-inner">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-600/10 border border-purple-500/30 text-purple-400 shadow-inner">
             <ShieldCheck className="h-6 w-6" />
           </div>
-          <h1 className="text-xl font-bold tracking-tight text-zinc-100">
-            TEST MANAGER
-          </h1>
+          <div>
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-purple-500/10 border border-purple-500/20 text-purple-400 mb-1">
+              WINDOWS EDITION • PFE CAPSTONE
+            </div>
+            <h1 className="text-xl font-bold tracking-tight text-zinc-100">
+              MorphFS Verification Platform
+            </h1>
+          </div>
           <p className="text-xs text-zinc-400">
-            Software Verification & Quality Assurance Platform
+            Copy-on-Write Filesystem Verification, Crash Consistency & Co-Op Defense Portal
           </p>
         </div>
 
         <Card className="border-zinc-800 bg-zinc-900/90 shadow-2xl backdrop-blur">
           <CardHeader className="space-y-1 pb-4">
             <CardTitle className="text-base font-semibold text-zinc-100">
-              Sign In to Verification Workspace
+              Sign In to MorphFS Workspace
             </CardTitle>
             <CardDescription className="text-xs text-zinc-400">
-              Enter your corporate credentials to access test suites and audit records
+              Access the 10 verification suites, invariant model checkers, and jury sign-off gates
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -131,7 +143,7 @@ function LoginForm() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="qa.lead@company.com"
+                  placeholder="engineer@morphfs.dev"
                   required
                   className="bg-zinc-950 border-zinc-800 text-xs"
                 />
@@ -156,10 +168,10 @@ function LoginForm() {
               <Button
                 type="submit"
                 variant="primary"
-                className="w-full mt-2 font-medium"
+                className="w-full mt-2 font-medium bg-purple-600 hover:bg-purple-500 text-white"
                 isLoading={loading}
               >
-                Sign In <ArrowRight className="h-4 w-4 ml-1.5" />
+                Sign In to MorphFS <ArrowRight className="h-4 w-4 ml-1.5" />
               </Button>
             </form>
 
@@ -169,25 +181,106 @@ function LoginForm() {
               </div>
               <div className="relative flex justify-center text-[10px] uppercase">
                 <span className="bg-zinc-900 px-2 text-zinc-500 font-mono">
-                  Or One-Click Access
+                  Fast Co-Op Access Profiles
                 </span>
               </div>
             </div>
 
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleDemoLogin}
-              disabled={loading}
-              className="w-full border-zinc-700 bg-zinc-950/60 hover:bg-zinc-800 text-xs text-zinc-300 gap-2"
-            >
-              <KeyRound className="h-3.5 w-3.5 text-blue-400" />
-              Sign In as Demo Lead Architect
-            </Button>
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() =>
+                  handleCoopProfileLogin(
+                    'ahmed@morphfs.dev',
+                    'Ahmed Affes',
+                    'Lead Systems Architect'
+                  )
+                }
+                disabled={loading}
+                className="w-full flex items-center justify-between p-2.5 rounded-lg border border-purple-500/30 bg-purple-950/20 hover:bg-purple-900/40 text-left transition-colors"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="h-7 w-7 rounded-md bg-purple-600/20 text-purple-400 font-bold flex items-center justify-center text-xs font-mono">
+                    AA
+                  </div>
+                  <div>
+                    <div className="text-xs font-semibold text-zinc-200">
+                      Ahmed Affes
+                    </div>
+                    <div className="text-[10px] text-purple-400 font-mono">
+                      Lead Systems Architect & Core Author
+                    </div>
+                  </div>
+                </div>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-500/20 text-purple-300">
+                  Author
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  handleCoopProfileLogin(
+                    'friend@morphfs.dev',
+                    'Systems Co-Author',
+                    'Systems Engineering Teammate'
+                  )
+                }
+                disabled={loading}
+                className="w-full flex items-center justify-between p-2.5 rounded-lg border border-blue-500/30 bg-blue-950/20 hover:bg-blue-900/40 text-left transition-colors"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="h-7 w-7 rounded-md bg-blue-600/20 text-blue-400 font-bold flex items-center justify-center text-xs font-mono">
+                    CO
+                  </div>
+                  <div>
+                    <div className="text-xs font-semibold text-zinc-200">
+                      Engineering Co-Author (Friend)
+                    </div>
+                    <div className="text-[10px] text-blue-400 font-mono">
+                      MFP Sync & Windows Shell Co-Developer
+                    </div>
+                  </div>
+                </div>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-500/20 text-blue-300">
+                  Co-Op
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  handleCoopProfileLogin(
+                    'professor@morphfs.dev',
+                    'Academic Advisor',
+                    'Academic Jury Evaluator'
+                  )
+                }
+                disabled={loading}
+                className="w-full flex items-center justify-between p-2.5 rounded-lg border border-emerald-500/30 bg-emerald-950/20 hover:bg-emerald-900/40 text-left transition-colors"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="h-7 w-7 rounded-md bg-emerald-600/20 text-emerald-400 font-bold flex items-center justify-center text-xs font-mono">
+                    PR
+                  </div>
+                  <div>
+                    <div className="text-xs font-semibold text-zinc-200">
+                      Prof. Academic Advisor
+                    </div>
+                    <div className="text-[10px] text-emerald-400 font-mono">
+                      PFE Defense Evaluator & Jury Sign-off
+                    </div>
+                  </div>
+                </div>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300">
+                  Jury
+                </span>
+              </button>
+            </div>
 
             <div className="pt-2 text-center text-xs text-zinc-500">
               Don&apos;t have an account?{' '}
-              <Link href="/signup" className="text-blue-400 hover:underline font-medium">
+              <Link href="/signup" className="text-purple-400 hover:underline font-medium">
                 Create Account
               </Link>
             </div>
@@ -195,7 +288,7 @@ function LoginForm() {
         </Card>
 
         <p className="text-center text-[10px] text-zinc-600 font-mono">
-          Immutable Testing Fidelity • RLS Secured • Audit Compliant
+          MorphFS Architecture • Invariant Verified • Windows Shell & Journaling
         </p>
       </div>
     </div>
@@ -207,7 +300,7 @@ export default function LoginPage() {
     <React.Suspense
       fallback={
         <div className="min-h-screen flex items-center justify-center bg-zinc-950 text-zinc-500 font-mono text-xs">
-          Loading authentication portal...
+          Loading MorphFS authentication portal...
         </div>
       }
     >

@@ -33,7 +33,7 @@ export default function SuitesPage() {
         .from('test_suites')
         .select(`
           *,
-          test_cases:test_cases(id, title, status, test_runs:test_runs(id, status))
+          test_cases:test_cases(id, title, status, test_runs:test_runs(id, status, run_number, created_at))
         `)
         .eq('project_id', projectId)
         .order('created_at', { ascending: false });
@@ -152,9 +152,13 @@ export default function SuitesPage() {
             let failCount = 0;
 
             suite.test_cases?.forEach((tc: any) => {
-              const latestRun = tc.test_runs?.[0];
-              if (latestRun?.status === 'passed') passCount++;
-              if (latestRun?.status === 'failed') failCount++;
+              const latestRun = (tc.test_runs || []).slice().sort(
+                (a: any, b: any) =>
+                  (b.run_number || 0) - (a.run_number || 0) ||
+                  new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+              )[0];
+              if (latestRun?.status === 'pass' || latestRun?.status === 'passed') passCount++;
+              if (latestRun?.status === 'fail' || latestRun?.status === 'failed') failCount++;
             });
 
             const passPercent = caseCount > 0 ? Math.round((passCount / caseCount) * 100) : 0;

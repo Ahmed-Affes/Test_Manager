@@ -125,8 +125,14 @@ export default function TestCaseDetailPage() {
         .select('*')
         .eq('project_id', resolvedProjectId);
 
+      const sortedRuns = (runsData || []).sort(
+        (a: any, b: any) =>
+          (b.run_number || 0) - (a.run_number || 0) ||
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+
       setTestCase(cData);
-      setRuns(runsData || []);
+      setRuns(sortedRuns);
       setIssues(issuesData || []);
       setEvidenceList(evList);
       setEnvironments(envsData || []);
@@ -255,7 +261,11 @@ export default function TestCaseDetailPage() {
   }
 
   const sortedSteps = [...(testCase.steps || [])].sort((a, b) => a.step_number - b.step_number);
-  const latestRun = runs[0];
+  const latestRun = [...runs].sort(
+    (a, b) =>
+      (b.run_number || 0) - (a.run_number || 0) ||
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  )[0];
 
   return (
     <div className="space-y-6">
@@ -351,7 +361,7 @@ export default function TestCaseDetailPage() {
           </div>
           <span>•</span>
           <div className="flex items-center gap-1.5 text-zinc-400">
-            <span>Status:</span>
+            <span>Case Lifecycle:</span>
             <span className="font-semibold text-zinc-200 uppercase">{testCase.status}</span>
           </div>
           <span>•</span>

@@ -84,7 +84,16 @@ export default function TestCasesPage() {
         .eq('project_id', pId)
         .order('name');
 
-      setTestCases(casesData || []);
+      const formattedCases = (casesData || []).map((tc: any) => ({
+        ...tc,
+        test_runs: (tc.test_runs || []).sort(
+          (a: any, b: any) =>
+            (b.run_number || 0) - (a.run_number || 0) ||
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        ),
+      }));
+
+      setTestCases(formattedCases);
       setSuites(suitesData || []);
       setEnvironments(envsData || []);
     } catch (err) {
@@ -380,7 +389,11 @@ export default function TestCasesPage() {
             </thead>
             <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800/60">
               {filteredCases.map((tc) => {
-                const latestRun = tc.test_runs?.[0];
+                const latestRun = (tc.test_runs || []).slice().sort(
+                  (a: any, b: any) =>
+                    (b.run_number || 0) - (a.run_number || 0) ||
+                    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+                )[0];
                 return (
                   <tr
                     key={tc.id}
@@ -425,7 +438,14 @@ export default function TestCasesPage() {
 
                     <td className="p-3">
                       {latestRun ? (
-                        <StatusBadge status={latestRun.status} />
+                        <div className="flex items-center gap-1.5">
+                          <StatusBadge status={latestRun.status} />
+                          {latestRun.run_number && (
+                            <span className="text-[10px] font-mono text-zinc-400">
+                              #{latestRun.run_number}
+                            </span>
+                          )}
+                        </div>
                       ) : (
                         <span className="text-[11px] font-mono text-zinc-400 dark:text-zinc-500">
                           Unexecuted

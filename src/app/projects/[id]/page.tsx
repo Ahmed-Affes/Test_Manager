@@ -39,7 +39,7 @@ export default async function ProjectOverviewPage({ params }: ProjectOverviewPro
   // Fetch recent test cases
   const { data: recentCases } = await supabase
     .from('test_cases')
-    .select('id, key, title, suite:test_suites(name), test_runs:test_runs(status, created_at)')
+    .select('id, key, title, suite:test_suites(name), test_runs:test_runs(status, created_at, run_number)')
     .eq('project_id', resolvedId)
     .order('created_at', { ascending: false })
     .limit(6);
@@ -319,7 +319,11 @@ export default async function ProjectOverviewPage({ params }: ProjectOverviewPro
           ) : (
             <div className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
               {cases.map((tc: any) => {
-                const latestRun = tc.test_runs?.[0];
+                const latestRun = (tc.test_runs || []).slice().sort(
+                  (a: any, b: any) =>
+                    (b.run_number || 0) - (a.run_number || 0) ||
+                    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+                )[0];
                 return (
                   <Link key={tc.id} href={`/projects/${resolvedId}/tests/${tc.id}`}
                     className="flex items-center justify-between px-4 py-2.5 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors group">
@@ -334,7 +338,14 @@ export default async function ProjectOverviewPage({ params }: ProjectOverviewPro
                     </div>
                     <div className="shrink-0 ml-3">
                       {latestRun ? (
-                        <StatusBadge status={latestRun.status} />
+                        <div className="flex items-center gap-1.5">
+                          <StatusBadge status={latestRun.status} />
+                          {latestRun.run_number && (
+                            <span className="text-[10px] font-mono text-zinc-400">
+                              #{latestRun.run_number}
+                            </span>
+                          )}
+                        </div>
                       ) : (
                         <span className="text-[11px] font-mono text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded">Not run</span>
                       )}

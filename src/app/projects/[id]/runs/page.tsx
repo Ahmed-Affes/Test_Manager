@@ -78,8 +78,8 @@ export default function RunsPage() {
 
   // Statistics calculation
   const totalRuns = runs.length;
-  const passedRuns = runs.filter((r) => r.status === 'passed').length;
-  const failedRuns = runs.filter((r) => r.status === 'failed').length;
+  const passedRuns = runs.filter((r) => r.status === 'pass' || r.status === 'passed').length;
+  const failedRuns = runs.filter((r) => r.status === 'fail' || r.status === 'failed').length;
   const blockedRuns = runs.filter((r) => r.status === 'blocked').length;
   const passRate = totalRuns > 0 ? Math.round((passedRuns / totalRuns) * 100) : 0;
   const avgDuration =
@@ -100,7 +100,13 @@ export default function RunsPage() {
       build.toLowerCase().includes(searchQuery.toLowerCase()) ||
       commit.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesStatus = statusFilter === 'all' || r.status === statusFilter;
+    const matchesStatus =
+      statusFilter === 'all' ||
+      (statusFilter === 'passed'
+        ? r.status === 'pass' || r.status === 'passed'
+        : statusFilter === 'failed'
+        ? r.status === 'fail' || r.status === 'failed'
+        : r.status === statusFilter);
     const matchesEnv = envFilter === 'all' || r.environment_id === envFilter;
 
     return matchesSearch && matchesStatus && matchesEnv;

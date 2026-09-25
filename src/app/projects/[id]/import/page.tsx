@@ -92,6 +92,28 @@ If a test fails, add create_defect: true and a defect object to automatically fi
     "severity": "critical"  // blocker, critical, major, minor, trivial
   }
 
+WHEN YOU FIX A BUG (RE-TESTING & AUTO-RESOLVE)
+==============================================
+1. Modify the code to apply your fix.
+2. Re-run the test to verify the fix works.
+3. Send a new sync with the SAME test key and "status": "pass":
+   {
+     "tests": [{
+       "key": "${projectKey}-011",
+       "run": {
+         "status": "pass",
+         "duration_ms": 75,
+         "actual_result": "Verified fixed: large file uploads now cleanly return HTTP 413"
+       }
+     }]
+   }
+
+Test Manager automatically:
+- Records Run #2 as Passed
+- Updates the Test Case status to GREEN (Pass)
+- Automatically marks the linked defect as "Resolved"
+- Preserves the full history: Run #1 (Failure + crash log) and Run #2 (Fix verification)
+
 MINIMAL EXAMPLE (single passing test)
 ======================================
 {

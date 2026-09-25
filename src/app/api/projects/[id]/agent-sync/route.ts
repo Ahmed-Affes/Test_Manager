@@ -52,6 +52,7 @@ export async function POST(
       updated_cases: 0,
       created_runs: 0,
       created_issues: 0,
+      resolved_issues: 0,
       attached_evidence: 0,
       recorded_signoffs: 0,
       details: [] as any[],
@@ -450,6 +451,29 @@ export async function POST(
                   }
                 }
               }
+
+              // Auto-resolve any open defects for this test case if the run passed
+              if (runStatus === 'pass') {
+                const { data: openBugs } = await admin
+                  .from('issues')
+                  .select('id, issue_key')
+                  .eq('test_case_id', caseId)
+                  .in('status', ['open', 'in_progress']);
+
+                if (openBugs && openBugs.length > 0) {
+                  for (const ob of openBugs) {
+                    await admin
+                      .from('issues')
+                      .update({
+                        status: 'resolved',
+                        resolution: `Verified resolved: Test passed in Run #${testRun.run_number || 'Latest'} (${item.run.commit_sha || item.run.version || 'AI Fix'})`,
+                        updated_at: new Date().toISOString(),
+                      })
+                      .eq('id', ob.id);
+                    summary.resolved_issues = (summary.resolved_issues || 0) + 1;
+                  }
+                }
+              }
             }
           }
 
@@ -551,6 +575,7 @@ export async function POST(
         updated_cases: summary.updated_cases,
         created_runs: summary.created_runs,
         created_issues: summary.created_issues,
+        resolved_issues: summary.resolved_issues,
         attached_evidence: summary.attached_evidence,
         recorded_signoffs: summary.recorded_signoffs,
       },

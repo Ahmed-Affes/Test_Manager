@@ -58,39 +58,38 @@ function LoginForm() {
     setLoading(true);
 
     try {
-      // First try to sign in
-      let { error: signInErr } = await supabase.auth.signInWithPassword({
+      // 1. Attempt direct sign-in first (accounts are already provisioned with confirmed email)
+      let { data, error: signInErr } = await supabase.auth.signInWithPassword({
         email: profileEmail,
         password: fixedPassword,
       });
 
-      // If user doesn't exist, sign them up on the fly
-      if (signInErr && signInErr.message.includes('Invalid login credentials')) {
-        const { error: signUpErr } = await supabase.auth.signUp({
-          email: profileEmail,
-          password: fixedPassword,
-          options: {
-            data: {
-              full_name: profileName,
-              role_title: roleTitle,
-            },
-          },
+      // 2. If credentials not found or account needs provisioning, use server-side admin API
+      if (signInErr) {
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: profileEmail,
+            password: fixedPassword,
+            fullName: profileName,
+          }),
         });
-        if (signUpErr) throw signUpErr;
 
-        // Sign in after signup
+        const regData = await res.json();
+        // If created or already exists, attempt final sign-in
         const { error: secondSignInErr } = await supabase.auth.signInWithPassword({
           email: profileEmail,
           password: fixedPassword,
         });
+
         if (secondSignInErr) throw secondSignInErr;
-      } else if (signInErr) {
-        throw signInErr;
       }
 
       router.push(redirectTo);
       router.refresh();
     } catch (err: any) {
+      console.error('Co-op profile login error:', err);
       setError(err.message || 'Co-op profile authentication failed.');
     } finally {
       setLoading(false);

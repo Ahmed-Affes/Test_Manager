@@ -37,7 +37,7 @@ export default function IssuesPage() {
 
   // Filters
   const [searchQuery, setSearchQuery] = React.useState('');
-  const [statusFilter, setStatusFilter] = React.useState('all');
+  const [statusFilter, setStatusFilter] = React.useState('active');
   const [severityFilter, setSeverityFilter] = React.useState('all');
 
   // Modals
@@ -137,61 +137,36 @@ export default function IssuesPage() {
   };
 
   const handleRetestRunSaved = async (runData: any) => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    // 1. Insert retest run
-    const { count } = await supabase
-      .from('test_runs')
-      .select('*', { count: 'exact', head: true })
-      .eq('test_case_id', runData.test_case_id);
-
-    const runNumber = (count || 0) + 1;
-
-    const { data: newRun, error: runErr } = await supabase
-      .from('test_runs')
-      .insert({
-        project_id: projectId,
-        test_case_id: runData.test_case_id,
-        run_number: runNumber,
-        status: runData.status,
-        duration_ms: runData.duration_ms,
-        environment_id: runData.environment_id || null,
-        actual_result: runData.actual_result || null,
-        notes: `Retest verification for issue ${retestActiveIssue?.issue_key}`,
-        executed_by: user?.id,
-      })
-      .select()
-      .single();
-
-    if (runErr) throw runErr;
-
-    // 2. If the retest passed, mark the issue resolved
-    if (retestActiveIssue && runData.status === 'pass') {
-      await supabase
-        .from('issues')
-        .update({
-          status: 'resolved',
-          resolution: `Verified passed in Run #${runNumber}`,
-        })
-        .eq('id', retestActiveIssue.id);
-
-      await logAuditEvent({
-        projectId,
-        action: 'resolve_issue',
-        entityType: 'issue',
-        entityId: retestActiveIssue.id,
-        details: {
-          issue_key: retestActiveIssue.issue_key,
-          resolved_by_run_id: newRun.id,
-        },
+    try {
+      const res = await fetch(`/api/projects/${projectId}/retest`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          issue_id: retestActiveIssue?.id,
+          test_case_id: runData.test_case_id,
+          status: runData.status,
+          duration_ms: runData.duration_ms,
+          actual_result: runData.actual_result,
+          notes: runData.notes,
+          environment_id: runData.environment_id,
+          application_version: runData.application_version,
+          build_number: runData.build_number,
+          branch: runData.branch,
+          commit_sha: runData.commit_sha,
+          step_results: runData.step_results,
+        }),
       });
-    }
 
-    setRetestActiveCase(null);
-    setRetestActiveIssue(null);
-    await fetchIssues();
+      if (!res.ok) {
+        console.error('Retest API error:', await res.json());
+      }
+    } catch (err) {
+      console.error('Failed to submit retest:', err);
+    } finally {
+      setRetestActiveCase(null);
+      setRetestActiveIssue(null);
+      await fetchIssues();
+    }
   };
 
   // KPIs
@@ -208,7 +183,15 @@ export default function IssuesPage() {
       i.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (i.root_cause && i.root_cause.toLowerCase().includes(searchQuery.toLowerCase()));
 
-    const matchesStatus = statusFilter === 'all' || i.status === statusFilter;
+    const matchesStatus =
+      statusFilter === 'all'
+        ? true
+        : statusFilter === 'active'
+        ? i.status === 'open' || i.status === 'in_progress'
+        : statusFilter === 'resolved'
+        ? i.status === 'resolved' || i.status === 'closed'
+        : i.status === statusFilter;
+
     const matchesSeverity = severityFilter === 'all' || i.severity === severityFilter;
 
     return matchesSearch && matchesStatus && matchesSeverity;
@@ -239,70 +222,127 @@ export default function IssuesPage() {
         </Button>
       </div>
 
-      {/* KPI Stats */}
+      {/* KPI Stats - Clickable Filters */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 shadow-sm">
+        <button
+          type="button"
+          onClick={() => { setStatusFilter('active'); setSeverityFilter('all'); }}
+          className={`p-4 rounded-xl border text-left transition-all shadow-sm cursor-pointer ${
+            statusFilter === 'active'
+              ? 'border-amber-500/60 bg-amber-500/10 ring-1 ring-amber-500/30'
+              : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 hover:border-zinc-300 dark:hover:border-zinc-700'
+          }`}
+        >
           <span className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400 uppercase">Open Defects</span>
           <div className="text-2xl font-bold font-mono text-amber-500 dark:text-amber-400 mt-1">{openIssues}</div>
-        </div>
+        </button>
 
-        <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 shadow-sm">
+        <button
+          type="button"
+          onClick={() => { setSeverityFilter('critical'); }}
+          className={`p-4 rounded-xl border text-left transition-all shadow-sm cursor-pointer ${
+            severityFilter === 'critical'
+              ? 'border-rose-500/60 bg-rose-500/10 ring-1 ring-rose-500/30'
+              : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 hover:border-zinc-300 dark:hover:border-zinc-700'
+          }`}
+        >
           <span className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400 uppercase">Blocker / Critical</span>
           <div className="text-2xl font-bold font-mono text-rose-500 dark:text-rose-400 mt-1">{blockerIssues}</div>
-        </div>
+        </button>
 
-        <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 shadow-sm">
+        <button
+          type="button"
+          onClick={() => { setStatusFilter('resolved'); setSeverityFilter('all'); }}
+          className={`p-4 rounded-xl border text-left transition-all shadow-sm cursor-pointer ${
+            statusFilter === 'resolved'
+              ? 'border-emerald-500/60 bg-emerald-500/10 ring-1 ring-emerald-500/30'
+              : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 hover:border-zinc-300 dark:hover:border-zinc-700'
+          }`}
+        >
           <span className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400 uppercase">Verified Resolved</span>
           <div className="text-2xl font-bold font-mono text-emerald-500 dark:text-emerald-400 mt-1">{resolvedIssues}</div>
-        </div>
+        </button>
 
-        <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 shadow-sm">
+        <button
+          type="button"
+          onClick={() => { setStatusFilter('all'); setSeverityFilter('all'); }}
+          className={`p-4 rounded-xl border text-left transition-all shadow-sm cursor-pointer ${
+            statusFilter === 'all' && severityFilter === 'all'
+              ? 'border-zinc-400 dark:border-zinc-600 bg-zinc-100 dark:bg-zinc-800/50 ring-1 ring-zinc-400/30'
+              : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 hover:border-zinc-300 dark:hover:border-zinc-700'
+          }`}
+        >
           <span className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400 uppercase">Total Logged</span>
           <div className="text-2xl font-bold font-mono text-zinc-900 dark:text-zinc-100 mt-1">{totalIssues}</div>
-        </div>
+        </button>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-400" />
-          <Input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by bug key, title, root cause..."
-            className="pl-9 h-8 text-xs"
-          />
+      {/* Quick Segment Tabs & Search */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800/60 p-1 rounded-lg border border-zinc-200 dark:border-zinc-700/60 w-fit">
+          <button
+            type="button"
+            onClick={() => setStatusFilter('active')}
+            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+              statusFilter === 'active'
+                ? 'bg-white dark:bg-zinc-900 text-amber-600 dark:text-amber-400 shadow-sm'
+                : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300'
+            }`}
+          >
+            Active Defects ({openIssues})
+          </button>
+          <button
+            type="button"
+            onClick={() => setStatusFilter('resolved')}
+            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+              statusFilter === 'resolved'
+                ? 'bg-white dark:bg-zinc-900 text-emerald-600 dark:text-emerald-400 shadow-sm'
+                : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300'
+            }`}
+          >
+            Verified Resolved ({resolvedIssues})
+          </button>
+          <button
+            type="button"
+            onClick={() => setStatusFilter('all')}
+            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+              statusFilter === 'all'
+                ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-sm'
+                : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300'
+            }`}
+          >
+            All ({totalIssues})
+          </button>
         </div>
 
-        <Select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="w-36 h-8 text-xs"
-        >
-          <option value="all">All Statuses</option>
-          <option value="open">Open</option>
-          <option value="in_progress">In Progress</option>
-          <option value="resolved">Resolved</option>
-          <option value="closed">Closed</option>
-          <option value="rejected">Rejected</option>
-        </Select>
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1 min-w-[200px] max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-400" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search defects..."
+              className="pl-9 h-8 text-xs"
+            />
+          </div>
 
-        <Select
-          value={severityFilter}
-          onChange={(e) => setSeverityFilter(e.target.value)}
-          className="w-36 h-8 text-xs"
-        >
-          <option value="all">All Severities</option>
-          <option value="blocker">Blocker</option>
-          <option value="critical">Critical</option>
-          <option value="major">Major</option>
-          <option value="minor">Minor</option>
-          <option value="trivial">Trivial</option>
-        </Select>
+          <Select
+            value={severityFilter}
+            onChange={(e) => setSeverityFilter(e.target.value)}
+            className="w-36 h-8 text-xs"
+          >
+            <option value="all">All Severities</option>
+            <option value="blocker">Blocker</option>
+            <option value="critical">Critical</option>
+            <option value="major">Major</option>
+            <option value="minor">Minor</option>
+            <option value="trivial">Trivial</option>
+          </Select>
 
-        <span className="text-xs text-zinc-500 font-mono ml-auto">
-          {filteredIssues.length} defects
-        </span>
+          <span className="text-xs text-zinc-500 font-mono hidden md:inline ml-2 whitespace-nowrap">
+            {filteredIssues.length} showing
+          </span>
+        </div>
       </div>
 
       {/* Issues Table */}
@@ -348,6 +388,12 @@ export default function IssuesPage() {
                       <span className="font-medium text-zinc-900 dark:text-zinc-200 block">
                         {issue.title}
                       </span>
+                      {issue.resolution && (
+                        <div className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                          <CheckCircle2 className="h-3 w-3 inline text-emerald-500 shrink-0" />
+                          <span>{issue.resolution}</span>
+                        </div>
+                      )}
                       {issue.test_case && (
                         <Link
                           href={`/projects/${projectId}/tests/${issue.test_case.id}`}
@@ -404,7 +450,12 @@ export default function IssuesPage() {
                   </td>
 
                   <td className="p-3 text-right font-sans">
-                    {issue.test_case ? (
+                    {issue.status === 'resolved' || issue.status === 'closed' ? (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold justify-end">
+                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                        Verified
+                      </span>
+                    ) : issue.test_case ? (
                       <RetestButton
                         issue={issue}
                         testCase={issue.test_case}

@@ -148,60 +148,35 @@ export default function TestCaseDetailPage() {
   };
 
   const handleSaveRun = async (runData: any) => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    try {
+      const resolvedCaseUuid = testCase?.id || caseId;
+      const res = await fetch(`/api/projects/${projectId}/retest`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          test_case_id: resolvedCaseUuid,
+          status: runData.status,
+          duration_ms: runData.duration_ms,
+          actual_result: runData.actual_result,
+          notes: runData.notes,
+          environment_id: runData.environment_id,
+          application_version: runData.application_version,
+          build_number: runData.build_number,
+          branch: runData.branch,
+          commit_sha: runData.commit_sha,
+          step_results: runData.step_results,
+        }),
+      });
 
-    const runNumber = runs.length + 1;
-
-    const { data: newRun, error: runErr } = await supabase
-      .from('test_runs')
-      .insert({
-        project_id: projectId,
-        test_case_id: caseId,
-        run_number: runNumber,
-        status: runData.status,
-        duration_ms: runData.duration_ms,
-        environment_id: runData.environment_id || null,
-        application_version: runData.application_version || null,
-        build_number: runData.build_number || null,
-        branch: runData.branch || null,
-        commit_sha: runData.commit_sha || null,
-        actual_result: runData.actual_result || null,
-        notes: runData.notes || null,
-        executed_by: user?.id,
-      })
-      .select()
-      .single();
-
-    if (runErr) throw runErr;
-
-    if (runData.step_results && runData.step_results.length > 0) {
-      const stepResults = runData.step_results.map((sr: any) => ({
-        test_run_id: newRun.id,
-        step_id: sr.step_id || null,
-        step_number: sr.step_number,
-        status: sr.status,
-        actual_result: sr.actual_result || null,
-        notes: sr.notes || null,
-      }));
-      await supabase.from('test_step_results').insert(stepResults);
+      if (!res.ok) {
+        console.error('Failed to save run via retest API:', await res.json());
+      }
+    } catch (err) {
+      console.error('Save run error:', err);
+    } finally {
+      await fetchCaseDetails();
+      setActiveTab('history');
     }
-
-    await logAuditEvent({
-      projectId,
-      action: 'create_test_run',
-      entityType: 'test_run',
-      entityId: newRun.id,
-      details: {
-        test_case_id: caseId,
-        status: runData.status,
-        run_number: runNumber,
-      },
-    });
-
-    await fetchCaseDetails();
-    setActiveTab('history');
   };
 
   const handleSaveIssue = async (issueData: any) => {

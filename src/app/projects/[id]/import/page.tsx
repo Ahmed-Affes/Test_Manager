@@ -60,7 +60,7 @@ CORE MANDATE:
 The user does ZERO manual actions on the Test Manager website. No forms, no manual test cases, no manual bug filing, no clicking 'Run'.
 You are 100% in charge of managing test suites, test cases, execution runs, bug filing, evidence uploading, verification re-tests, and release sign-offs autonomously via the API:
 
-  POST https://testmangerapp.vercel.app/api/projects/${projectKey}/agent-sync
+  POST https://testmanger.vercel.app/api/projects/${projectKey}/agent-sync
   Content-Type: application/json
 
 YOUR 0-TO-100 AUTONOMOUS WORKFLOW:
@@ -175,13 +175,13 @@ EXECUTION COMMANDS:
 ===================
 # PowerShell (Vercel Production):
 $json = Get-Content payload.json -Raw
-Invoke-RestMethod -Uri "https://testmangerapp.vercel.app/api/projects/${projectKey}/agent-sync" -Method POST -Headers @{"Content-Type"="application/json"} -Body $json
+Invoke-RestMethod -Uri "https://testmanger.vercel.app/api/projects/${projectKey}/agent-sync" -Method POST -Headers @{"Content-Type"="application/json"} -Body $json
 
 # PowerShell (Local Dev):
 Invoke-RestMethod -Uri "http://localhost:3000/api/projects/${projectKey}/agent-sync" -Method POST -Headers @{"Content-Type"="application/json"} -Body $json
 
 # cURL:
-curl -X POST "https://testmangerapp.vercel.app/api/projects/${projectKey}/agent-sync" -H "Content-Type: application/json" -d @payload.json`;
+curl -X POST "https://testmanger.vercel.app/api/projects/${projectKey}/agent-sync" -H "Content-Type: application/json" -d @payload.json`;
 
   const nodejsSnippet = `// After running your tests, call this to push results to Test Manager:
 const payload = {
@@ -203,7 +203,7 @@ const payload = {
 };
 
 const response = await fetch(
-  "https://testmangerapp.vercel.app/api/projects/${projectKey}/agent-sync",
+  "https://testmanger.vercel.app/api/projects/${projectKey}/agent-sync",
   {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -232,7 +232,7 @@ $payload = @{
 } | ConvertTo-Json -Depth 5
 
 Invoke-RestMethod \`
-  -Uri "https://testmangerapp.vercel.app/api/projects/${projectKey}/agent-sync" \`
+  -Uri "https://testmanger.vercel.app/api/projects/${projectKey}/agent-sync" \`
   -Method POST \`
   -Headers @{"Content-Type" = "application/json"} \`
   -Body $payload`;

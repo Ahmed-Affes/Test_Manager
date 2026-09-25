@@ -89,6 +89,13 @@ export default function ImportAndAgentPage() {
           version: 'v1.0.0-rc1',
           branch: 'main',
           commit_sha: 'a1b2c3d4e5',
+          evidence: [
+            {
+              file_name: 'fsck_journal_replay.log',
+              file_type: 'text/plain',
+              description: 'fsck journal replay verification output log',
+            },
+          ],
         },
       },
       {
@@ -132,6 +139,13 @@ export default function ImportAndAgentPage() {
           actual_result: 'Kernel returned EINVAL: Extended attribute hash mismatch on snapshot boundary.',
           version: 'v1.0.0-rc1',
           branch: 'main',
+          evidence: [
+            {
+              file_name: 'xattr_mismatch.dump',
+              file_type: 'application/octet-stream',
+              description: 'Raw inode header dump with corrupted xattr offset',
+            },
+          ],
         },
         create_defect: true,
         defect: {
@@ -140,6 +154,13 @@ export default function ImportAndAgentPage() {
           severity: 'critical',
           priority: 'critical',
           root_cause: 'Missing inode offset calculation in snapshot lookup function.',
+          evidence: [
+            {
+              file_name: 'kernel_panic_trace.txt',
+              file_type: 'text/plain',
+              description: 'Kernel stack trace at morphfs_getxattr',
+            },
+          ],
         },
       },
     ],
@@ -172,24 +193,34 @@ export default function ImportAndAgentPage() {
     }
   };
 
-  const agentPrompt = `You are a Senior QA Automation Engineer for ${projectKey}.
-Whenever you write code or run tests, push the test specifications and execution results directly to Test Manager using this HTTP endpoint:
+  const agentPrompt = `You are an AI Coding & Verification Agent building ${projectKey}.
+Whenever you implement a feature, module, or bugfix in ${projectKey}, write and execute your tests, then push the entire verification ecosystem directly to Test Manager via this single API call:
 
 Endpoint: POST https://testmanger.vercel.app/api/projects/${projectKey}/agent-sync
 Header: Content-Type: application/json
+
+What you have full access to create & manage automatically:
+- Suites: Define your feature verification suite (e.g., "Disk Layout & Superblock", "Crash Recovery & Journal Replay", "WinFsp Driver Sync")
+- Environments: Define your runtime targets (e.g., "Windows 11 WinFsp Native", "WSL2 Ubuntu 24.04 QEMU")
+- Milestones / Plans: Group tests into defense milestones (e.g., "PFE Milestone 1: Core Disk Layout")
+- Test Cases & Step Definitions: Actions, preconditions, expected outcomes
+- Execution History: Actual duration, passing/failing status, commit SHA, version
+- Crash Dumps & Evidence Vault: Attach logs, hex traces, and core dump filenames directly to the run or defect
+- Defect Tracking: Automatically opened if a test fails or crashes
+- Release Gates: Submit quality gating decisions (approved, conditional, rejected)
 
 Payload Format:
 {
   "suite": "morphFS Core & VFS Layer",
   "suite_description": "Verification of inode allocation and crash consistency",
   "environment": {
-    "name": "morphFS Linux 6.12 (QEMU KVM)",
-    "os": "Ubuntu 24.04 (Kernel 6.12)",
-    "runtime": "QEMU KVM"
+    "name": "morphFS Windows 11 (WinFsp)",
+    "os": "Windows 11 23H2",
+    "runtime": "WinFsp + PowerShell 7 Harness"
   },
   "plan": {
-    "name": "v1.0 Milestone Release",
-    "description": "Core filesystem stability gating"
+    "name": "PFE Milestone 1: Core Disk Layout",
+    "description": "Superblock and COW inode tree verification"
   },
   "tests": [
     {
@@ -203,26 +234,27 @@ Payload Format:
       "expected_result": "Clean journal replay with zero orphan inodes",
       "steps": [
         { "action": "Mount with journal=ordered", "expected": "Filesystem mounts rw" },
-        { "action": "Trigger kernel fault", "expected": "Dirty blocks written to circular buffer" },
-        { "action": "Remount and replay", "expected": "Zero orphan inodes; clean state" }
+        { "action": "Trigger abrupt power fault", "expected": "Dirty blocks written to circular buffer" },
+        { "action": "Remount and replay journal", "expected": "Zero orphan inodes; clean state" }
       ],
       "run": {
-        "status": "pass", // pass | fail | blocked | skipped
+        "status": "pass",
         "duration_ms": 1420,
         "actual_result": "Replay completed in 1.42s with zero orphan inodes.",
         "version": "v1.0.0",
-        "branch": "main"
+        "branch": "main",
+        "evidence": [
+          { "file_name": "fsck_journal_replay.log", "file_type": "text/plain", "description": "fsck replay output" }
+        ]
       }
     }
   ],
   "signoff": {
-    "decision": "approved", // approved | rejected | conditional
-    "role": "Automated AI Verification Gate",
-    "notes": "All verification criteria met."
+    "decision": "approved",
+    "role": "Lead Systems Architect Gate",
+    "notes": "Journal replay verified without metadata corruption."
   }
-}
-
-Ensure all failed executions automatically create defects and attach execution logs.`;
+}`;
 
   const curlSnippet = `curl -X POST https://testmanger.vercel.app/api/projects/${projectKey}/agent-sync \\
   -H "Content-Type: application/json" \\
@@ -242,7 +274,7 @@ Ensure all failed executions automatically create defects and attach execution l
             </h1>
           </div>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-            Let your AI coding agents and CI/CD pipelines automatically add tests, record runs, and report results.
+            Let your AI coding agents automatically create verification suites, add test cases, log execution runs, attach crash dumps, and register environments.
           </p>
         </div>
 
@@ -264,7 +296,7 @@ Ensure all failed executions automatically create defects and attach execution l
             isLoading={syncingSample}
           >
             <Sparkles className="h-3.5 w-3.5 mr-1.5" />
-            Populate Sample Tests Now
+            Populate Sample Run (Demo)
           </Button>
         </div>
       </div>

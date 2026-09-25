@@ -311,7 +311,7 @@ export default async function ProjectOverviewPage({ params }: ProjectOverviewPro
         {totalCases === 0 && (
           <div className="p-3 rounded-lg border border-dashed border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/20 text-xs text-zinc-500 dark:text-zinc-400 flex flex-col sm:flex-row items-center justify-between gap-2">
             <span>
-              🌱 <strong>Clean Development State:</strong> Suites and environments are ready. Add test cases manually or have your AI agent sync tests automatically as you build MorphFS.
+              🌱 <strong>Ready for MorphFS Build:</strong> Clean slate. As you build MorphFS, your AI agent can automatically create suites, tests, runs, crash evidence, environments, and milestones, or you can add them manually.
             </span>
             <Link href={`/projects/${resolvedId}/tests/new`}>
               <Button size="xs" variant="outline" className="gap-1 border-purple-300 dark:border-purple-800 text-purple-700 dark:text-purple-300">

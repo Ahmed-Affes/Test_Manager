@@ -49,7 +49,7 @@ export function Sidebar({ currentProject, projects = [], userRole = 'tester' }: 
       exact: true,
     },
     {
-      title: '10 Verification Suites',
+      title: 'Verification Suites',
       href: `/projects/${projectId}/suites`,
       icon: FolderKanban,
     },
@@ -79,7 +79,7 @@ export function Sidebar({ currentProject, projects = [], userRole = 'tester' }: 
       icon: Server,
     },
     {
-      title: 'PFE Milestones 1-4',
+      title: 'PFE Milestones',
       href: `/projects/${projectId}/plans`,
       icon: CalendarRange,
     },

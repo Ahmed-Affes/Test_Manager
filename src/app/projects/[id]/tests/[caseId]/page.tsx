@@ -29,7 +29,7 @@ import { IssueModal } from '@/components/issues/IssueModal';
 import { RetestButton } from '@/components/issues/RetestButton';
 import { EvidenceGallery } from '@/components/evidence/EvidenceGallery';
 import { EvidenceUploader } from '@/components/evidence/EvidenceUploader';
-import { formatDate, formatDuration } from '@/lib/utils';
+import { formatDate, formatDuration, resolveProjectId } from '@/lib/utils';
 import { logAuditEvent } from '@/lib/audit';
 
 export default function TestCaseDetailPage() {
@@ -193,28 +193,31 @@ export default function TestCaseDetailPage() {
       data: { user },
     } = await supabase.auth.getUser();
 
+    const resolvedCaseUuid = testCase?.id || caseId;
+    const pId = testCase?.project_id || (await resolveProjectId(supabase, projectId));
+
     // Fetch project key for issue key
     const { data: proj } = await supabase
       .from('projects')
       .select('key')
-      .eq('id', projectId)
+      .eq('id', pId)
       .single();
 
     const { count } = await supabase
       .from('issues')
       .select('*', { count: 'exact', head: true })
-      .eq('project_id', projectId);
+      .eq('project_id', pId);
 
     const issueKey = `${proj?.key || 'BUG'}-BUG-${(count || 0) + 1}`;
 
     const { data: newIssue, error: issueErr } = await supabase
       .from('issues')
       .insert({
-        project_id: projectId,
+        project_id: pId,
         issue_key: issueKey,
         title: issueData.title,
         description: issueData.description || null,
-        test_case_id: caseId,
+        test_case_id: resolvedCaseUuid,
         test_run_id: runs[0]?.id || null,
         severity: issueData.severity,
         priority: issueData.priority,
@@ -232,7 +235,7 @@ export default function TestCaseDetailPage() {
     if (issueErr) throw issueErr;
 
     await logAuditEvent({
-      projectId,
+      projectId: pId,
       action: 'create_issue',
       entityType: 'issue',
       entityId: newIssue.id,

@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Modal } from '@/components/ui/modal';
 import { logAuditEvent } from '@/lib/audit';
+import { resolveProjectId } from '@/lib/utils';
 
 export default function SuitesPage() {
   const params = useParams();
@@ -18,6 +19,7 @@ export default function SuitesPage() {
   const supabase = createClient();
 
   const [suites, setSuites] = React.useState<any[]>([]);
+  const [resolvedProjectId, setResolvedProjectId] = React.useState<string>(projectId);
   const [loading, setLoading] = React.useState(true);
   const [isCreateOpen, setIsCreateOpen] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
@@ -29,13 +31,16 @@ export default function SuitesPage() {
   const fetchSuites = React.useCallback(async () => {
     setLoading(true);
     try {
+      const pId = await resolveProjectId(supabase, projectId);
+      setResolvedProjectId(pId);
+
       const { data, error } = await supabase
         .from('test_suites')
         .select(`
           *,
           test_cases:test_cases(id, title, status, test_runs:test_runs(id, status, run_number, created_at))
         `)
-        .eq('project_id', projectId)
+        .eq('project_id', pId)
         .order('created_at', { ascending: false });
 
       if (error) console.error('Fetch suites error:', error);
@@ -59,6 +64,7 @@ export default function SuitesPage() {
 
     setSubmitting(true);
     try {
+      const pId = await resolveProjectId(supabase, projectId);
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -66,7 +72,7 @@ export default function SuitesPage() {
       const { data: newSuite, error } = await supabase
         .from('test_suites')
         .insert({
-          project_id: projectId,
+          project_id: pId,
           name: name.trim(),
           description: description.trim() || null,
           created_by: user?.id,
@@ -77,7 +83,7 @@ export default function SuitesPage() {
       if (error) throw error;
 
       await logAuditEvent({
-        projectId,
+        projectId: pId,
         action: 'create_suite',
         entityType: 'test_suite',
         entityId: newSuite.id,

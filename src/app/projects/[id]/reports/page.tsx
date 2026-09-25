@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { ReportGenerator } from '@/components/reports/ReportGenerator';
 import { createClient } from '@/lib/supabase/client';
-import { formatDate } from '@/lib/utils';
+import { formatDate, resolveProjectId } from '@/lib/utils';
 
 export default function ReportsPage() {
   const params = useParams();
@@ -31,37 +31,39 @@ export default function ReportsPage() {
   const fetchData = React.useCallback(async () => {
     setLoading(true);
     try {
+      const pId = await resolveProjectId(supabase, projectId);
+
       // 1. Fetch project info
       const { data: proj } = await supabase
         .from('projects')
         .select('*')
-        .eq('id', projectId)
+        .eq('id', pId)
         .single();
 
       // 2. Fetch test cases with suite
       const { data: cases } = await supabase
         .from('test_cases')
         .select('*, suite:test_suites(name)')
-        .eq('project_id', projectId);
+        .eq('project_id', pId);
 
       // 3. Fetch test runs
       const { data: runs } = await supabase
         .from('test_runs')
         .select('*, environment:environments(name)')
-        .eq('project_id', projectId)
+        .eq('project_id', pId)
         .order('created_at', { ascending: false });
 
       // 4. Fetch issues
       const { data: iss } = await supabase
         .from('issues')
         .select('*')
-        .eq('project_id', projectId);
+        .eq('project_id', pId);
 
       // 5. Fetch environments
       const { data: envs } = await supabase
         .from('environments')
         .select('*')
-        .eq('project_id', projectId);
+        .eq('project_id', pId);
 
       setProject(proj);
       setTestCases(cases || []);

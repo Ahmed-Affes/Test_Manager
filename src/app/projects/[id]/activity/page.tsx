@@ -7,7 +7,7 @@ import { AuditLog } from '@/lib/types';
 import { createClient } from '@/lib/supabase/client';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
-import { formatDate } from '@/lib/utils';
+import { formatDate, resolveProjectId } from '@/lib/utils';
 
 export default function ActivityAuditPage() {
   const params = useParams();
@@ -24,10 +24,12 @@ export default function ActivityAuditPage() {
   const fetchLogs = React.useCallback(async () => {
     setLoading(true);
     try {
+      const pId = await resolveProjectId(supabase, projectId);
+
       const { data, error } = await supabase
         .from('audit_logs')
         .select('*')
-        .eq('project_id', projectId)
+        .eq('project_id', pId)
         .order('created_at', { ascending: false });
 
       if (error) console.error('Fetch audit logs error:', error);

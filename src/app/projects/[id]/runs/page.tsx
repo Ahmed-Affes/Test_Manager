@@ -22,7 +22,7 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { JunitImportModal } from '@/components/automated/JunitImportModal';
-import { formatDate, formatDuration } from '@/lib/utils';
+import { formatDate, formatDuration, resolveProjectId } from '@/lib/utils';
 
 export default function RunsPage() {
   const params = useParams();
@@ -31,6 +31,7 @@ export default function RunsPage() {
 
   const [runs, setRuns] = React.useState<any[]>([]);
   const [environments, setEnvironments] = React.useState<Environment[]>([]);
+  const [resolvedProjectId, setResolvedProjectId] = React.useState<string>(projectId);
   const [loading, setLoading] = React.useState(true);
 
   // Filters
@@ -44,6 +45,9 @@ export default function RunsPage() {
   const fetchRuns = React.useCallback(async () => {
     setLoading(true);
     try {
+      const pId = await resolveProjectId(supabase, projectId);
+      setResolvedProjectId(pId);
+
       const { data: runsData, error } = await supabase
         .from('test_runs')
         .select(`
@@ -51,7 +55,7 @@ export default function RunsPage() {
           test_case:test_cases(id, key, title, type),
           environment:environments(id, name, type)
         `)
-        .eq('project_id', projectId)
+        .eq('project_id', pId)
         .order('created_at', { ascending: false });
 
       if (error) console.error('Fetch runs error:', error);
@@ -59,7 +63,7 @@ export default function RunsPage() {
       const { data: envsData } = await supabase
         .from('environments')
         .select('*')
-        .eq('project_id', projectId);
+        .eq('project_id', pId);
 
       setRuns(runsData || []);
       setEnvironments(envsData || []);
@@ -300,7 +304,7 @@ export default function RunsPage() {
       <JunitImportModal
         isOpen={isJunitModalOpen}
         onClose={() => setIsJunitModalOpen(false)}
-        projectId={projectId}
+        projectId={resolvedProjectId}
         environments={environments}
         onImportComplete={() => fetchRuns()}
       />

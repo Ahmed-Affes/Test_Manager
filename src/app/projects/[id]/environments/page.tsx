@@ -19,7 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Modal } from '@/components/ui/modal';
-import { formatDate } from '@/lib/utils';
+import { formatDate, resolveProjectId } from '@/lib/utils';
 import { logAuditEvent } from '@/lib/audit';
 
 export default function EnvironmentsPage() {
@@ -43,13 +43,15 @@ export default function EnvironmentsPage() {
   const fetchEnvironments = React.useCallback(async () => {
     setLoading(true);
     try {
+      const pId = await resolveProjectId(supabase, projectId);
+
       const { data, error } = await supabase
         .from('environments')
         .select(`
           *,
           test_runs:test_runs(id, status, created_at)
         `)
-        .eq('project_id', projectId)
+        .eq('project_id', pId)
         .order('name');
 
       if (error) console.error('Fetch environments error:', error);
@@ -73,10 +75,11 @@ export default function EnvironmentsPage() {
 
     setSubmitting(true);
     try {
+      const pId = await resolveProjectId(supabase, projectId);
       const { data: newEnv, error } = await supabase
         .from('environments')
         .insert({
-          project_id: projectId,
+          project_id: pId,
           name: name.trim(),
           type,
           os: os.trim() || null,
@@ -91,7 +94,7 @@ export default function EnvironmentsPage() {
       if (error) throw error;
 
       await logAuditEvent({
-        projectId,
+        projectId: pId,
         action: 'create_environment',
         entityType: 'environment',
         entityId: newEnv.id,

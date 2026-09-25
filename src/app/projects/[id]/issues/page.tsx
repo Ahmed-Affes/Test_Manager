@@ -22,7 +22,7 @@ import { Select } from '@/components/ui/select';
 import { IssueModal } from '@/components/issues/IssueModal';
 import { RetestButton } from '@/components/issues/RetestButton';
 import { TestRunnerModal } from '@/components/execution/TestRunnerModal';
-import { formatDate } from '@/lib/utils';
+import { formatDate, resolveProjectId } from '@/lib/utils';
 import { logAuditEvent } from '@/lib/audit';
 
 export default function IssuesPage() {
@@ -33,6 +33,7 @@ export default function IssuesPage() {
   const [issues, setIssues] = React.useState<any[]>([]);
   const [testCases, setTestCases] = React.useState<TestCase[]>([]);
   const [environments, setEnvironments] = React.useState<Environment[]>([]);
+  const [resolvedProjectId, setResolvedProjectId] = React.useState<string>(projectId);
   const [loading, setLoading] = React.useState(true);
 
   // Filters
@@ -48,6 +49,9 @@ export default function IssuesPage() {
   const fetchIssues = React.useCallback(async () => {
     setLoading(true);
     try {
+      const pId = await resolveProjectId(supabase, projectId);
+      setResolvedProjectId(pId);
+
       const { data: issuesData, error } = await supabase
         .from('issues')
         .select(`
@@ -55,7 +59,7 @@ export default function IssuesPage() {
           test_case:test_cases(id, key, title, steps:test_steps(*)),
           test_run:test_runs(id, run_number, status)
         `)
-        .eq('project_id', projectId)
+        .eq('project_id', pId)
         .order('created_at', { ascending: false });
 
       if (error) console.error('Fetch issues error:', error);
@@ -63,12 +67,12 @@ export default function IssuesPage() {
       const { data: casesData } = await supabase
         .from('test_cases')
         .select('*')
-        .eq('project_id', projectId);
+        .eq('project_id', pId);
 
       const { data: envsData } = await supabase
         .from('environments')
         .select('*')
-        .eq('project_id', projectId);
+        .eq('project_id', pId);
 
       setIssues(issuesData || []);
       setTestCases(casesData || []);
@@ -87,6 +91,7 @@ export default function IssuesPage() {
   }, [projectId, fetchIssues]);
 
   const handleSaveIssue = async (issueData: any) => {
+    const pId = await resolveProjectId(supabase, projectId);
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -94,20 +99,20 @@ export default function IssuesPage() {
     const { data: proj } = await supabase
       .from('projects')
       .select('key')
-      .eq('id', projectId)
+      .eq('id', pId)
       .single();
 
     const { count } = await supabase
       .from('issues')
       .select('*', { count: 'exact', head: true })
-      .eq('project_id', projectId);
+      .eq('project_id', pId);
 
     const issueKey = `${proj?.key || 'BUG'}-BUG-${(count || 0) + 1}`;
 
     const { data: newIssue, error } = await supabase
       .from('issues')
       .insert({
-        project_id: projectId,
+        project_id: pId,
         issue_key: issueKey,
         title: issueData.title,
         description: issueData.description || null,
@@ -126,7 +131,7 @@ export default function IssuesPage() {
     if (error) throw error;
 
     await logAuditEvent({
-      projectId,
+      projectId: pId,
       action: 'create_issue',
       entityType: 'issue',
       entityId: newIssue.id,

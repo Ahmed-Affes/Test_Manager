@@ -233,3 +233,21 @@ export function getIssueStatusClasses(status: IssueStatus): {
       };
   }
 }
+
+/**
+ * Resolves a project identifier that may be either a UUID or a Project Key (e.g. 'MORPH')
+ * into the canonical project UUID.
+ */
+export async function resolveProjectId(supabase: any, projectIdOrKey: string): Promise<string> {
+  if (!projectIdOrKey) return projectIdOrKey;
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(projectIdOrKey);
+  if (isUuid) return projectIdOrKey;
+  try {
+    const { data: p } = await supabase.from('projects').select('id').ilike('key', projectIdOrKey).maybeSingle();
+    if (p?.id) return p.id;
+  } catch (e) {
+    console.error('Error resolving project id:', e);
+  }
+  return projectIdOrKey;
+}
+

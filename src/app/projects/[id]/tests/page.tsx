@@ -282,10 +282,10 @@ export default function TestCasesPage() {
         <div>
           <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
             <CheckSquare className="h-5 w-5 text-blue-500" />
-            Test Cases Repository
+            Test Cases
           </h1>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-            Structured test definitions, preconditions, execution procedures, and historical runs
+            All test cases for this project — steps, expected results, and run history
           </p>
         </div>
 
@@ -373,11 +373,11 @@ export default function TestCasesPage() {
         <div className="p-12 text-center border border-dashed rounded-xl border-zinc-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-900/20 space-y-3">
           <CheckSquare className="h-10 w-10 text-zinc-400 dark:text-zinc-600 mx-auto" />
           <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-300">
-            {testCases.length === 0 ? 'Clean Slate: Zero Test Cases' : 'No Test Cases Found'}
+            {testCases.length === 0 ? 'No test cases yet' : 'No test cases found'}
           </h3>
           <p className="text-xs text-zinc-500 max-w-md mx-auto">
             {testCases.length === 0
-              ? 'Ready for MorphFS development! As you build the filesystem components, add your manual verification procedures here or connect your AI Agent / CI to auto-create tests.'
+              ? 'Add test cases manually below, or connect your AI agent to push tests automatically via API.'
               : 'No test cases match your search and filter criteria.'}
           </p>
           {testCases.length === 0 && (

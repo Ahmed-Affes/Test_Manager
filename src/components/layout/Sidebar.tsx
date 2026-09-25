@@ -5,24 +5,15 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
-  FolderKanban,
   CheckSquare,
-  PlaySquare,
   Bug,
-  Camera,
-  Server,
-  CalendarRange,
   FileText,
-  DownloadCloud,
   FileCode,
-  Users,
-  History,
   Settings,
   ChevronDown,
   Plus,
   ChevronsLeft,
   ChevronsRight,
-  ShieldAlert,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Project, ProjectRole } from '@/lib/types';
@@ -43,73 +34,33 @@ export function Sidebar({ currentProject, projects = [], userRole = 'tester' }: 
 
   const navItems = [
     {
-      title: 'Architecture & Overview',
+      title: 'Overview',
       href: `/projects/${projectId}`,
       icon: LayoutDashboard,
       exact: true,
     },
     {
-      title: 'Verification Suites',
-      href: `/projects/${projectId}/suites`,
-      icon: FolderKanban,
-    },
-    {
-      title: 'Filesystem Test Cases',
+      title: 'Test Cases',
       href: `/projects/${projectId}/tests`,
       icon: CheckSquare,
     },
     {
-      title: 'Execution History',
-      href: `/projects/${projectId}/runs`,
-      icon: PlaySquare,
-    },
-    {
-      title: 'Crash & Defect Issues',
+      title: 'Bugs & Issues',
       href: `/projects/${projectId}/issues`,
       icon: Bug,
     },
     {
-      title: 'Evidence Vault (fsck/Dumps)',
-      href: `/projects/${projectId}/evidence`,
-      icon: Camera,
-    },
-    {
-      title: 'Target Environments',
-      href: `/projects/${projectId}/environments`,
-      icon: Server,
-    },
-    {
-      title: 'PFE Milestones',
-      href: `/projects/${projectId}/plans`,
-      icon: CalendarRange,
-    },
-    {
-      title: 'Verification Reports',
+      title: 'Reports',
       href: `/projects/${projectId}/reports`,
       icon: FileText,
     },
     {
-      title: 'Snapshots & Backup',
-      href: `/projects/${projectId}/backup`,
-      icon: DownloadCloud,
-    },
-    {
-      title: 'AI Agent & CI Import',
+      title: 'AI Agent Guide',
       href: `/projects/${projectId}/import`,
       icon: FileCode,
     },
     {
-      title: 'Co-Op Team & Roles',
-      href: `/projects/${projectId}/members`,
-      icon: Users,
-    },
-    {
-      title: 'Invariant Audit Trail',
-      href: `/projects/${projectId}/activity`,
-      icon: History,
-    },
-    {
-      title: 'Engine Settings',
+      title: 'Settings',
       href: `/projects/${projectId}/settings`,
       icon: Settings,
     },
@@ -141,7 +92,7 @@ export function Sidebar({ currentProject, projects = [], userRole = 'tester' }: 
                     <span>{currentProject?.name || 'MorphFS'}</span>
                   </div>
                   <div className="truncate font-mono text-[10px] text-purple-400">
-                    Windows Edition • PFE
+                    {currentProject?.key || 'Project'}
                   </div>
                 </div>
               </div>
@@ -247,7 +198,7 @@ export function Sidebar({ currentProject, projects = [], userRole = 'tester' }: 
         {!collapsed && (
           <div className="flex items-center gap-1.5 px-1.5 text-[11px] text-zinc-400">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-purple-500" />
-            <span>MorphFS v2.4 (Win11)</span>
+            <span>{currentProject?.key || 'Test Manager'}</span>
           </div>
         )}
         <Button

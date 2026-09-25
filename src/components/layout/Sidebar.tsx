@@ -98,7 +98,7 @@ export function Sidebar({ currentProject, projects = [], userRole = 'tester' }: 
 
   const navSections: NavSection[] = [
     {
-      label: 'Testing & Runs',
+      label: 'Testing & Quality',
       items: [
         {
           title: 'Overview',
@@ -115,11 +115,6 @@ export function Sidebar({ currentProject, projects = [], userRole = 'tester' }: 
           title: 'Test Cases',
           href: `/projects/${projectId}/tests`,
           icon: CheckSquare,
-        },
-        {
-          title: 'Execution Runs',
-          href: `/projects/${projectId}/runs`,
-          icon: PlaySquare,
         },
       ],
     },

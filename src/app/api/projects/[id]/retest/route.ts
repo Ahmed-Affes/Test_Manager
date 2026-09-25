@@ -170,12 +170,13 @@ export async function POST(
         }
       }
     } else if (status === 'fail' || status === 'blocked') {
-      // If retest failed, ensure target issue reflects failure
+      // If retest failed or test execution failed, ensure defect exists and is open
       if (issue_id) {
         await admin
           .from('issues')
           .update({
             status: 'in_progress',
+            test_run_id: newRun.id,
             resolution: `Retest verification failed in Run #${newRun.run_number || 'Latest'}: ${actual_result || 'Discrepancy observed'}`,
             updated_at: new Date().toISOString(),
           })
@@ -187,6 +188,76 @@ export async function POST(
           new_status: 'in_progress',
           comment: `Retest failed in Run #${newRun.run_number || 'Latest'}: ${actual_result || 'Still failing'}`,
         });
+      } else if (resolvedCaseId) {
+        // Check if there is an active defect for this test case
+        const { data: existingActive } = await admin
+          .from('issues')
+          .select('id, issue_key, status')
+          .eq('test_case_id', resolvedCaseId)
+          .in('status', ['open', 'investigating', 'in_progress', 'retesting', 'fixed'])
+          .maybeSingle();
+
+        if (existingActive) {
+          await admin
+            .from('issues')
+            .update({
+              status: 'in_progress',
+              test_run_id: newRun.id,
+              resolution: `Test execution failed in Run #${newRun.run_number || 'Latest'}: ${actual_result || 'Discrepancy observed'}`,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', existingActive.id);
+
+          await admin.from('issue_history').insert({
+            issue_id: existingActive.id,
+            old_status: existingActive.status,
+            new_status: 'in_progress',
+            comment: `Execution failure in Run #${newRun.run_number || 'Latest'}: ${actual_result || 'Failure observed'}`,
+          });
+        } else {
+          // AUTO-CREATE DEFECT SO IT IMMEDIATELY APPEARS IN BUGS & ISSUES!
+          const { data: tc } = await admin
+            .from('test_cases')
+            .select('key, title, severity, priority, description')
+            .eq('id', resolvedCaseId)
+            .maybeSingle();
+
+          const { count } = await admin
+            .from('issues')
+            .select('*', { count: 'exact', head: true })
+            .eq('project_id', project.id);
+
+          const nextNum = (count || 0) + 1;
+          const issueKey = `BUG-${project.key}-${String(nextNum).padStart(3, '0')}`;
+
+          const { data: newDefect, error: defErr } = await admin
+            .from('issues')
+            .insert({
+              project_id: project.id,
+              test_case_id: resolvedCaseId,
+              test_run_id: newRun.id,
+              issue_key: issueKey,
+              title: tc?.title ? `[Defect] ${tc.title} verification failed` : `[Defect] Execution failure in ${project.key}`,
+              description: actual_result || notes || `Execution run #${newRun.run_number || 'Latest'} failed.`,
+              severity: tc?.severity || 'major',
+              priority: tc?.priority || 'high',
+              status: 'open',
+              root_cause: notes || actual_result || 'Observed failure during test execution',
+            })
+            .select()
+            .single();
+
+          if (newDefect) {
+            await admin.from('issue_history').insert({
+              issue_id: newDefect.id,
+              old_status: null,
+              new_status: 'open',
+              comment: `Defect auto-created from failing Run #${newRun.run_number || 'Latest'}: ${actual_result || 'Execution failed'}`,
+            });
+          } else if (defErr) {
+            console.error('Failed to auto-create defect on test failure:', defErr);
+          }
+        }
       }
     }
 

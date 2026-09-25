@@ -346,14 +346,6 @@ export function CommandPalette({
                 <span>Test Cases Repository</span>
               </Command.Item>
 
-              <Command.Item
-                value="execution history runs log"
-                onSelect={() => navigate(`/projects/${pId}/runs`)}
-                className="flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 my-0.5 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-              >
-                <PlaySquare className="h-3.5 w-3.5 text-zinc-400" />
-                <span>Execution History & Runs</span>
-              </Command.Item>
 
               <Command.Item
                 value="issues defects retest queue"

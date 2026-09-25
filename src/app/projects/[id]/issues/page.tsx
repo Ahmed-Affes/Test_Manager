@@ -38,7 +38,7 @@ export default function IssuesPage() {
 
   // Filters
   const [searchQuery, setSearchQuery] = React.useState('');
-  const [statusFilter, setStatusFilter] = React.useState('active');
+  const [statusFilter, setStatusFilter] = React.useState('all');
   const [severityFilter, setSeverityFilter] = React.useState('all');
 
   // Modals
@@ -47,7 +47,6 @@ export default function IssuesPage() {
   const [retestActiveIssue, setRetestActiveIssue] = React.useState<Issue | null>(null);
 
   const fetchIssues = React.useCallback(async () => {
-    setLoading(true);
     try {
       const pId = await resolveProjectId(supabase, projectId);
       setResolvedProjectId(pId);
@@ -87,6 +86,13 @@ export default function IssuesPage() {
   React.useEffect(() => {
     if (projectId) {
       fetchIssues();
+      const interval = setInterval(fetchIssues, 4000);
+      const onFocus = () => fetchIssues();
+      window.addEventListener('focus', onFocus);
+      return () => {
+        clearInterval(interval);
+        window.removeEventListener('focus', onFocus);
+      };
     }
   }, [projectId, fetchIssues]);
 
@@ -364,14 +370,30 @@ export default function IssuesPage() {
           ))}
         </div>
       ) : filteredIssues.length === 0 ? (
-        <div className="p-12 text-center border border-dashed rounded-xl border-zinc-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-900/20 space-y-2">
+        <div className="p-12 text-center border border-dashed rounded-xl border-zinc-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-900/20 space-y-3">
           <Bug className="h-8 w-8 text-zinc-400 dark:text-zinc-600 mx-auto" />
-          <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-300">No Defects Logged</h3>
-          <p className="text-xs text-zinc-500">
+          <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-300">
+            {statusFilter === 'active' && resolvedIssues > 0
+              ? 'All Defects Verified & Resolved'
+              : 'No Defects Found'}
+          </h3>
+          <p className="text-xs text-zinc-500 max-w-sm mx-auto">
             {issues.length === 0
               ? 'Zero defects filed for this project. Clean verification bill of health.'
-              : 'No defects match the selected filters.'}
+              : statusFilter === 'active' && resolvedIssues > 0
+              ? `Great job! All ${resolvedIssues} recorded defect(s) have been verified and closed.`
+              : 'No defects match the selected filters or search query.'}
           </p>
+          {statusFilter === 'active' && resolvedIssues > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setStatusFilter('all')}
+              className="text-xs font-medium mt-2"
+            >
+              View Verified Defects ({resolvedIssues})
+            </Button>
+          )}
         </div>
       ) : (
         <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 overflow-hidden shadow-sm">

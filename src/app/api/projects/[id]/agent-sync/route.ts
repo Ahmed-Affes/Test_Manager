@@ -790,6 +790,51 @@ export async function POST(
                 summary.resolved_issues++;
               }
             }
+          } else if (runStatus === 'fail' || runStatus === 'blocked') {
+            const { data: openBugs } = await admin
+              .from('issues')
+              .select('id, issue_key, status')
+              .eq('test_case_id', targetCase.id)
+              .in('status', ['open', 'investigating', 'in_progress', 'retesting', 'fixed']);
+
+            if (!openBugs || openBugs.length === 0) {
+              const { count: issueCount } = await admin
+                .from('issues')
+                .select('*', { count: 'exact', head: true })
+                .eq('project_id', project.id);
+              const nextNum = (issueCount || 0) + 1;
+              const issueKey = `BUG-${project.key}-${String(nextNum).padStart(3, '0')}`;
+
+              const defect = r.defect || r.issue || {};
+              const { data: createdIssue } = await admin
+                .from('issues')
+                .insert({
+                  project_id: project.id,
+                  test_case_id: targetCase.id,
+                  test_run_id: createdRun.id,
+                  issue_key: issueKey,
+                  title: defect.title || `[Defect] ${targetCase.title} execution failed`,
+                  description: defect.description || r.actual_result || 'Automated execution failure detected during test run.',
+                  severity: defect.severity || (targetCase as any).severity || 'major',
+                  priority: defect.priority || (targetCase as any).priority || 'high',
+                  status: defect.status || 'open',
+                  root_cause: defect.root_cause || r.notes || r.actual_result || null,
+                  fix_description: defect.fix_description || null,
+                  related_commit: r.commit_sha || null,
+                })
+                .select('id')
+                .single();
+
+              if (createdIssue) {
+                summary.created_issues++;
+                await admin.from('issue_history').insert({
+                  issue_id: createdIssue.id,
+                  old_status: null,
+                  new_status: 'open',
+                  comment: `Auto-created defect from failing run: ${r.actual_result || 'Execution failed'}`,
+                });
+              }
+            }
           }
         }
       }

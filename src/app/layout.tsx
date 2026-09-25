@@ -5,6 +5,9 @@ export const metadata: Metadata = {
   title: 'Test Manager — Software Verification & Quality Assurance Platform',
   description:
     'Collaborative software testing and verification platform preserving complete historical fidelity, audit logs, test execution evidence, and release sign-off gating.',
+  icons: {
+    icon: '/favicon.svg',
+  },
 };
 
 export default function RootLayout({

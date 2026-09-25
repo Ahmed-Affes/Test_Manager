@@ -36,24 +36,25 @@ export default function MembersPage() {
         if (p) pId = p.id;
       }
 
-      const { data, error } = await supabase
+      const { data: mData, error: mErr } = await supabase
         .from('project_members')
-        .select(`
-          id,
-          role,
-          created_at,
-          user:users (
-            id,
-            email,
-            full_name,
-            avatar_url
-          )
-        `)
+        .select('*')
         .eq('project_id', pId);
 
-      if (!error && data) {
-        setMembers(data);
-      }
+      if (mErr) throw mErr;
+
+      const userIds = (mData || []).map((m: any) => m.user_id);
+      const { data: pData } = await supabase
+        .from('profiles')
+        .select('*')
+        .in('id', userIds);
+
+      const combined = (mData || []).map((m: any) => ({
+        ...m,
+        user: pData?.find((p: any) => p.id === m.user_id),
+      }));
+
+      setMembers(combined);
     } catch (err) {
       console.error('Failed to load members:', err);
     } finally {
@@ -130,7 +131,7 @@ export default function MembersPage() {
               AA
             </div>
             <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-purple-500/20 text-purple-700 dark:text-purple-300">
-              LEAD AUTHOR
+              OWNER (LEAD)
             </span>
           </div>
           <div>
@@ -138,13 +139,13 @@ export default function MembersPage() {
               <span>Ahmed Affes</span>
               <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" title="Online" />
             </div>
-            <div className="text-[11px] text-purple-600 dark:text-purple-400 font-mono">Lead Systems Architect</div>
+            <div className="text-[11px] text-purple-600 dark:text-purple-400 font-mono">Lead Systems Architect & Core Author</div>
             <div className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">
               Core storage engine, copy-on-write, circular journal, crash recovery & invariant fuzzing suites.
             </div>
           </div>
           <div className="text-[10px] font-mono text-zinc-500 pt-2 border-t border-purple-500/20 flex items-center justify-between">
-            <span>Privileges: Full Admin / Commits</span>
+            <span>Privileges: Full Owner / Commits & Admin</span>
             <span className="text-emerald-500 font-semibold">ACTIVE</span>
           </div>
         </div>
@@ -155,21 +156,21 @@ export default function MembersPage() {
               CO
             </div>
             <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-blue-500/20 text-blue-700 dark:text-blue-300">
-              CO-AUTHOR
+              OWNER (CO-AUTHOR)
             </span>
           </div>
           <div>
             <div className="text-sm font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
-              <span>Engineering Co-Author</span>
+              <span>Systems Co-Author</span>
               <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" title="Online" />
             </div>
-            <div className="text-[11px] text-blue-600 dark:text-blue-400 font-mono">Systems Co-Developer</div>
+            <div className="text-[11px] text-blue-600 dark:text-blue-400 font-mono">Systems Co-Developer & Teammate</div>
             <div className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">
               MFP sync protocol, Windows Explorer shell context menus, Control Center & benchmarking.
             </div>
           </div>
           <div className="text-[10px] font-mono text-zinc-500 pt-2 border-t border-blue-500/20 flex items-center justify-between">
-            <span>Privileges: Test Execution & Retests</span>
+            <span>Privileges: Full Owner / Test Execution & Commits</span>
             <span className="text-emerald-500 font-semibold">ACTIVE</span>
           </div>
         </div>
@@ -180,13 +181,13 @@ export default function MembersPage() {
               PR
             </div>
             <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-700 dark:text-emerald-300">
-              ACADEMIC JURY
+              VIEWER (JURY)
             </span>
           </div>
           <div>
             <div className="text-sm font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
               <span>Prof. Academic Advisor</span>
-              <span className="h-2 w-2 rounded-full bg-purple-500" title="Reviewing" />
+              <span className="h-2 w-2 rounded-full bg-zinc-400" title="Offline / Read-Only Review" />
             </div>
             <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-mono">PFE Jury President & Evaluator</div>
             <div className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">
@@ -194,8 +195,8 @@ export default function MembersPage() {
             </div>
           </div>
           <div className="text-[10px] font-mono text-zinc-500 pt-2 border-t border-emerald-500/20 flex items-center justify-between">
-            <span>Privileges: Quality Authority & Audit</span>
-            <span className="text-purple-600 dark:text-purple-400 font-semibold">REVIEWING</span>
+            <span>Privileges: Read-Only Audit & Evaluation Sign-Off</span>
+            <span className="text-zinc-400 font-semibold">VIEWER</span>
           </div>
         </div>
       </div>

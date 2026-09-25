@@ -55,7 +55,7 @@ export function Sidebar({ currentProject, projects = [], userRole = 'tester' }: 
 
   const projectId = currentProject?.id || 'demo-project';
 
-  // Fetch active issues count for live badge
+  // Fetch active issues count for live badge with multi-layer real-time sync
   React.useEffect(() => {
     if (!currentProject?.id) return;
     let isMounted = true;
@@ -78,7 +78,16 @@ export function Sidebar({ currentProject, projects = [], userRole = 'tester' }: 
 
     fetchIssueCount();
 
-    // Listen for issue updates in realtime
+    // 1. Polling interval to guarantee live sync across retests and runs
+    const interval = setInterval(fetchIssueCount, 3000);
+
+    // 2. Window focus & custom event trigger
+    const onFocus = () => fetchIssueCount();
+    const onCustomUpdate = () => fetchIssueCount();
+    window.addEventListener('focus', onFocus);
+    window.addEventListener('issues-updated', onCustomUpdate);
+
+    // 3. Supabase Realtime Channel
     const channel = supabase
       .channel(`sidebar-issues:${currentProject.id}`)
       .on(
@@ -92,9 +101,12 @@ export function Sidebar({ currentProject, projects = [], userRole = 'tester' }: 
 
     return () => {
       isMounted = false;
+      clearInterval(interval);
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('issues-updated', onCustomUpdate);
       supabase.removeChannel(channel);
     };
-  }, [currentProject?.id, supabase]);
+  }, [currentProject?.id, pathname, supabase]);
 
   const navSections: NavSection[] = [
     {

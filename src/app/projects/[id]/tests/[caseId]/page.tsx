@@ -185,6 +185,9 @@ export default function TestCaseDetailPage() {
       setRetestingIssue(null);
       await fetchCaseDetails();
       setActiveTab('history');
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('issues-updated'));
+      }
     }
   };
 

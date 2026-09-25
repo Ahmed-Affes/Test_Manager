@@ -232,6 +232,9 @@ export default function TestCasesPage() {
     } finally {
       setActiveRunningCase(null);
       await fetchData();
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('issues-updated'));
+      }
     }
   };
 

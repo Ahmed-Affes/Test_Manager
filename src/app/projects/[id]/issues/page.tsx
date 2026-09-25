@@ -145,6 +145,9 @@ export default function IssuesPage() {
     });
 
     await fetchIssues();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('issues-updated'));
+    }
   };
 
   const handleRetestRunSaved = async (runData: any) => {
@@ -177,6 +180,9 @@ export default function IssuesPage() {
       setRetestActiveCase(null);
       setRetestActiveIssue(null);
       await fetchIssues();
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('issues-updated'));
+      }
     }
   };
 

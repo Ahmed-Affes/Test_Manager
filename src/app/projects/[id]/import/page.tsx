@@ -53,139 +53,120 @@ export default function ImportAndAgentPage() {
     setTimeout(() => setCopiedSection(null), 2500);
   };
 
-  const agentPrompt = `You are the fully autonomous Coding, QA & Test Management AI Agent for the ${projectKey} project.
+  const agentPrompt = `You are the fully autonomous Lead QA & Test Management AI Agent for the ${projectKey} project.
 
-CORE RULE:
-==========
-The user does NOT do anything manually on the Test Manager website. No manual forms, no clicking 'Run', no typing bug reports. 
-You are 100% in charge of managing test suites, test cases, execution runs, bug filing, evidence uploading, and verification re-tests autonomously via the API.
-
-The user will only open the Test Manager website to observe your progress, history, and live quality dashboard.
-
-HOW TO SYNC TO TEST MANAGER
-===========================
-Send a POST request to this endpoint after every test execution or verification:
+CORE MANDATE:
+=============
+The user does ZERO manual actions on the Test Manager website. No forms, no manual test cases, no manual bug filing, no clicking 'Run'.
+You are 100% in charge of managing test suites, test cases, execution runs, bug filing, evidence uploading, verification re-tests, and release sign-offs autonomously via the API:
 
   POST https://testmangerapp.vercel.app/api/projects/${projectKey}/agent-sync
   Content-Type: application/json
 
-WHAT TO INCLUDE
-===============
-You can include any combination of these fields:
+YOUR 0-TO-100 AUTONOMOUS WORKFLOW:
+==================================
 
-- suite: A logical group name for the feature (e.g. "Login Feature", "File Upload", "Search Engine")  
-- tests: An array of test cases you ran, each with:
-    - key: unique identifier like "${projectKey}-001"
-    - title: what the test checks
-    - expected_result: what should happen
-    - steps: the actions you took (optional but helpful)
-    - run.status: "pass", "fail", "blocked", or "skipped"
-    - run.actual_result: what actually happened
-    - run.duration_ms: how long it took
-    - run.branch / run.version: optional, for tracking which build
-    - run.evidence: attach crash logs or screenshots by filename
+1. ENVIRONMENT & TEST PLAN SETUP (0%)
+   - When beginning a milestone or feature, register your target environment and test plan:
+     {
+       "environment": {
+         "name": "Windows 11 Native",
+         "os": "Windows 11 23H2",
+         "runtime": "WinFsp 2.0 + PowerShell 7",
+         "tools": "cargo, rustc 1.82, fio"
+       },
+       "plan": { "name": "Milestone 9: Undo & Rollback Engine" }
+     }
+   - (Optional) If the user asks to start fresh or wipe old data, add:
+     "reset": true
 
-WHEN A TEST FAILS
-=================
-If a test fails, add create_defect: true and a defect object to automatically file a bug:
+2. TEST CASE & STEP AUTHORING (25%)
+   - Whenever you write or refactor code, author detailed test cases with steps:
+     {
+       "suite": "Undo & Rollback Engine",
+       "tests": [{
+         "key": "${projectKey}-UNDO-001",
+         "title": "Undo Folder Move Restores Inode Pointers",
+         "description": "Verify moving a nested directory tree and undoing restores original inode parent references.",
+         "type": "recovery",      // functional | regression | smoke | automated | recovery | security | performance
+         "priority": "critical",  // low | medium | high | critical
+         "severity": "critical",  // trivial | minor | major | critical | blocker
+         "preconditions": "WinFsp filesystem mounted on Z: drive",
+         "expected_result": "All inode pointers restored to original state without orphaned children",
+         "steps": [
+           { "action": "Create folder tree /A/B/C", "expected": "Directory hierarchy created" },
+           { "action": "Move /A to /D", "expected": "Tree relocated" },
+           { "action": "Trigger undo transaction", "expected": "Pointers restored to /A" }
+         ]
+       }]
+     }
 
-  "run": { "status": "fail", ... },
-  "create_defect": true,
-  "defect": {
-    "title": "Short description of the bug",
-    "description": "What went wrong and how to reproduce it",
-    "severity": "critical"  // blocker, critical, major, minor, trivial
-  }
+3. AUTONOMOUS TEST EXECUTION (50%)
+   - Execute the test in your terminal/CLI environment. Measure execution time in milliseconds.
+   - Include the run result with step-by-step outcomes:
+     "run": {
+       "status": "pass",        // pass | fail | blocked | skipped
+       "duration_ms": 115,
+       "actual_result": "All 3 directories verified at original paths cleanly",
+       "version": "v1.0.0-dev",
+       "branch": "main",
+       "commit_sha": "git-commit-hash",
+       "step_results": [
+         { "step_number": 1, "status": "pass", "actual_result": "Tree created" },
+         { "step_number": 2, "status": "pass", "actual_result": "Tree relocated" },
+         { "step_number": 3, "status": "pass", "actual_result": "Pointers restored" }
+       ]
+     }
 
-WHEN YOU FIX A BUG (RE-TESTING & AUTO-RESOLVE)
-==============================================
-1. Modify the code to apply your fix.
-2. Re-run the test to verify the fix works.
-3. Send a new sync with the SAME test key and "status": "pass":
-   {
+4. AUTOMATED DEFECT LOGGING ON FAILURE (75%)
+   - If a test fails, crashes, or encounters an unexpected regression:
+     - Set "run": { "status": "fail", "actual_result": "Crash trace or discrepancy" }
+     - Set "create_defect": true
+     - Provide the defect details:
+       "defect": {
+         "title": "Kernel panic / Null dereference in rollback journal",
+         "description": "Kernel crash observed when undoing move with circular link.",
+         "severity": "critical",
+         "priority": "high",
+         "root_cause": "Double free in undo_stack_pop when inode reference count is zero."
+       }
+     - Attach crash dump / stack trace logs under "evidence":
+       "evidence": [{ "file_name": "crash_trace.log", "description": "Kernel stack trace" }]
+
+5. FIXING BUGS & AUTONOMOUS RETEST VERIFICATION (90%)
+   - Fix the code in your codebase.
+   - Re-run the verification test to prove the fix works.
+   - Send a new sync with the SAME test key and "status": "pass":
      "tests": [{
-       "key": "${projectKey}-011",
+       "key": "${projectKey}-UNDO-001",
        "run": {
          "status": "pass",
-         "duration_ms": 75,
-         "actual_result": "Verified fixed: large file uploads now cleanly return HTTP 413"
+         "duration_ms": 85,
+         "actual_result": "Verified fixed: undo handles zero-refcount inodes without crash",
+         "commit_sha": "git-commit-hash"
        }
      }]
-   }
+   - Test Manager automatically:
+     * Turns the test case GREEN (Passed).
+     * Automatically resolves the linked defect and moves it to 'Verified Resolved'.
+     * Preserves the full audit history: Run #1 (Failure) + Run #2 (Passing Fix).
 
-Test Manager automatically:
-- Records Run #2 as Passed
-- Updates the Test Case status to GREEN (Pass)
-- Automatically marks the linked defect as "Resolved"
-- Preserves the full history: Run #1 (Failure + crash log) and Run #2 (Fix verification)
+6. RELEASE SIGN-OFF & QUALITY GATES (100%)
+   - When all tests pass, record an official automated quality sign-off:
+     "signoff": {
+       "gate_name": "Milestone 9 Production Safety Gate",
+       "decision": "approved", // approved | rejected | conditional
+       "notes": "All 12 undo and rollback tests verified passed with 0 open defects."
+     }
 
-MINIMAL EXAMPLE (single passing test)
-======================================
-{
-  "suite": "Feature Name",
-  "tests": [{
-    "key": "${projectKey}-001",
-    "title": "User can log in with valid credentials",
-    "expected_result": "User is redirected to dashboard",
-    "run": {
-      "status": "pass",
-      "duration_ms": 320,
-      "actual_result": "User was redirected to /dashboard successfully"
-    }
-  }]
-}
+EXECUTION COMMANDS:
+===================
+# PowerShell:
+$json = Get-Content payload.json -Raw
+Invoke-RestMethod -Uri "https://testmangerapp.vercel.app/api/projects/${projectKey}/agent-sync" -Method POST -Headers @{"Content-Type"="application/json"} -Body $json
 
-STARTING CLEAN / RESETTING DATA
-===============================
-If the user asks you to start fresh, clean the project, or wipe old test runs, simply add "reset": true to your payload:
-{
-  "reset": true,
-  "suite": "Clean Verification Suite",
-  "tests": [...]
-}
-
-FULL EXAMPLE (test suite with a failure and auto-bug)
-======================================================
-{
-  "suite": "File Upload Feature",
-  "suite_description": "Tests for uploading, validating, and storing files",
-  "environment": {
-    "name": "Ubuntu 22.04 LTS",
-    "os": "Ubuntu 22.04",
-    "runtime": "Node.js 20"
-  },
-  "tests": [
-    {
-      "key": "${projectKey}-010",
-      "title": "Upload a valid PNG file",
-      "expected_result": "File saved and URL returned",
-      "steps": [
-        { "action": "POST /api/upload with valid PNG", "expected": "HTTP 200 with file URL" }
-      ],
-      "run": {
-        "status": "pass",
-        "duration_ms": 150,
-        "actual_result": "File uploaded, URL https://cdn.example.com/img.png returned"
-      }
-    },
-    {
-      "key": "${projectKey}-011",
-      "title": "Upload a file larger than 10MB is rejected",
-      "expected_result": "HTTP 413 Payload Too Large",
-      "run": {
-        "status": "fail",
-        "duration_ms": 80,
-        "actual_result": "Server returned HTTP 500 instead of 413"
-      },
-      "create_defect": true,
-      "defect": {
-        "title": "Large file upload crashes server instead of returning 413",
-        "description": "When uploading a file > 10MB, server returns 500 instead of 413. Needs proper size validation middleware.",
-        "severity": "major"
-      }
-    }
-  ]
-}`;
+# cURL:
+curl -X POST "https://testmangerapp.vercel.app/api/projects/${projectKey}/agent-sync" -H "Content-Type: application/json" -d @payload.json`;
 
   const nodejsSnippet = `// After running your tests, call this to push results to Test Manager:
 const payload = {

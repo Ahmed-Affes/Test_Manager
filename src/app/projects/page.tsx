@@ -87,7 +87,7 @@ export default function ProjectsPage() {
           key: keyFormatted,
           name: newName.trim(),
           description: newDesc.trim() || null,
-          created_by: user?.id,
+          owner_id: user?.id,
         })
         .select()
         .single();

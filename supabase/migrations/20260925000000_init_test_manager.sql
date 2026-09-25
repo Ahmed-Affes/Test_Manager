@@ -489,9 +489,11 @@ CREATE POLICY "Only Owners can delete project"
 CREATE OR REPLACE FUNCTION public.after_project_created()
 RETURNS TRIGGER AS $$
 BEGIN
-    INSERT INTO public.project_members (project_id, user_id, role)
-    VALUES (NEW.id, NEW.owner_id, 'owner')
-    ON CONFLICT (project_id, user_id) DO NOTHING;
+    IF NEW.owner_id IS NOT NULL THEN
+        INSERT INTO public.project_members (project_id, user_id, role)
+        VALUES (NEW.id, NEW.owner_id, 'owner')
+        ON CONFLICT (project_id, user_id) DO NOTHING;
+    END IF;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

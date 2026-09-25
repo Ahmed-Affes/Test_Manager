@@ -514,7 +514,7 @@ export async function POST(
       }
     }
 
-    // 9. Process Quality Sign-Offs & Release Gates
+    // 9. Process Quality Sign-Offs
     const allSignoffs = [
       ...(singleSignoffParam ? [singleSignoffParam] : []),
       ...(Array.isArray(multiSignoffsParam) ? multiSignoffsParam : []),
@@ -526,9 +526,9 @@ export async function POST(
         if (so && so.decision) {
           await admin.from('report_signoffs').insert({
             project_id: project.id,
-            role: so.role || so.gate_name || 'Automated AI Verification Gate',
+            role: so.role || so.gate_name || 'Automated AI QA Sign-Off',
             decision: so.decision, // 'approved' | 'rejected' | 'conditional'
-            notes: so.notes || 'Automated release gate sign-off recorded by AI Agent sync',
+            notes: so.notes || 'Automated quality sign-off recorded by AI Agent sync',
           });
           summary.recorded_signoffs++;
         }

@@ -185,7 +185,7 @@ export function Header({
                         PFE Graduation Jury Evaluator
                       </div>
                       <div className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5">
-                        Reviewing Verification Dossier & Gate Sign-Offs
+                        Reviewing Verification Dossier & Quality Sign-Offs
                       </div>
                     </div>
                   </div>

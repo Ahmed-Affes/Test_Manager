@@ -190,11 +190,11 @@ export default function MembersPage() {
             </div>
             <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-mono">PFE Jury President & Evaluator</div>
             <div className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">
-              Verification audit dossier review, reference model inspection & formal graduation release gate sign-off.
+              Verification audit dossier review, reference model inspection & formal release sign-off.
             </div>
           </div>
           <div className="text-[10px] font-mono text-zinc-500 pt-2 border-t border-emerald-500/20 flex items-center justify-between">
-            <span>Privileges: Gating Authority & Audit</span>
+            <span>Privileges: Quality Authority & Audit</span>
             <span className="text-purple-600 dark:text-purple-400 font-semibold">REVIEWING</span>
           </div>
         </div>

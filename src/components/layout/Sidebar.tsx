@@ -84,7 +84,7 @@ export function Sidebar({ currentProject, projects = [], userRole = 'tester' }: 
       icon: CalendarRange,
     },
     {
-      title: 'Release Gates & Sign-Off',
+      title: 'Verification Reports',
       href: `/projects/${projectId}/reports`,
       icon: FileText,
     },

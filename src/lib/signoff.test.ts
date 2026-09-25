@@ -54,7 +54,7 @@ export function calculateQualityGating({
   };
 }
 
-describe('QA Release Verification & Sign-off Gate', () => {
+describe('QA Release Verification & Sign-off', () => {
   it('should qualify for release when pass rate >= 90% and 0 blockers exist', () => {
     const testCases = Array.from({ length: 10 }, (_, i) => ({ id: `tc-${i + 1}` }));
     // 9 passes, 1 failure

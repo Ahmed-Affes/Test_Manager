@@ -174,7 +174,7 @@ export default async function ProjectOverviewPage({ params }: ProjectOverviewPro
           <Link href={`/projects/${resolvedId}/reports`}>
             <Button size="xs" variant="primary" className="gap-1.5 bg-purple-600 hover:bg-purple-500 text-white">
               <FileText className="h-3.5 w-3.5" />
-              Release Gates & Sign-Off
+              Test Reports
             </Button>
           </Link>
         </div>
@@ -231,7 +231,7 @@ export default async function ProjectOverviewPage({ params }: ProjectOverviewPro
                 <span className="h-1.5 w-1.5 rounded-full bg-purple-500" />
               </div>
               <div className="text-[10px] text-emerald-700 dark:text-emerald-400 font-mono font-medium">PFE Jury Evaluator</div>
-              <div className="text-[10px] text-zinc-500 dark:text-zinc-400">Formal Defense Sign-Off</div>
+              <div className="text-[10px] text-zinc-500 dark:text-zinc-400">Formal Defense Review</div>
             </div>
           </div>
           <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-emerald-200 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300">
@@ -240,88 +240,25 @@ export default async function ProjectOverviewPage({ params }: ProjectOverviewPro
         </div>
       </div>
 
-      {/* 10 PFE Release Gates Tracker */}
-      <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 shadow-sm space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-            <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200 uppercase tracking-wider">
-              MorphFS Verification Gates (PFE Defense Progression)
+      {totalCases === 0 && (
+        <div className="p-4 rounded-xl border border-dashed border-zinc-300 dark:border-zinc-800 bg-white dark:bg-zinc-900/30 text-xs text-zinc-600 dark:text-zinc-400 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-sm">
+          <div className="flex items-center gap-3">
+            <span className="p-2 rounded-lg bg-purple-100 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800/50 text-base">
+              🌱
             </span>
+            <div>
+              <strong className="text-zinc-900 dark:text-zinc-100 block font-semibold">Ready for MorphFS Build:</strong>
+              <span>Clean slate. As you build features, your AI agent can automatically add suites, test cases, execution runs, and crash evidence via API.</span>
+            </div>
           </div>
-          <Link
-            href={`/projects/${resolvedId}/reports`}
-            className="text-[11px] text-purple-600 dark:text-purple-400 hover:underline font-mono"
-          >
-            Open Evaluation Dossier →
+          <Link href={`/projects/${resolvedId}/tests/new`}>
+            <Button size="xs" variant="primary" className="gap-1 bg-purple-600 hover:bg-purple-500 text-white shrink-0">
+              <Plus className="h-3 w-3" />
+              Add First Test Case
+            </Button>
           </Link>
         </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-5 lg:grid-cols-10 gap-2">
-          {[
-            { id: 'GATE 0', name: 'Disk Layout' },
-            { id: 'GATE 1', name: 'Object IDs' },
-            { id: 'GATE 2', name: 'Version Tree' },
-            { id: 'GATE 3', name: 'Crash Replay' },
-            { id: 'GATE 4', name: 'GC Reclaim' },
-            { id: 'GATE 5', name: 'MFP Sync' },
-            { id: 'GATE 6', name: 'Win Shell' },
-            { id: 'GATE 7', name: 'INV Fuzzing' },
-            { id: 'GATE 8', name: 'Benchmarks' },
-            { id: 'GATE 9', name: 'Jury Defense' },
-          ].map((gate) => {
-            const isVerified = totalRuns > 0 && passRate >= 90;
-            return (
-              <div
-                key={gate.id}
-                className={`p-2 rounded-lg border text-center space-y-1 ${
-                  isVerified
-                    ? 'border-emerald-500/30 bg-emerald-50 dark:bg-emerald-950/20'
-                    : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/40'
-                }`}
-              >
-                <div className={`font-mono text-[10px] font-bold ${
-                  isVerified ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-600 dark:text-zinc-400'
-                }`}>
-                  {gate.id}
-                </div>
-                <div className="text-[10px] text-zinc-700 dark:text-zinc-300 font-medium truncate">
-                  {gate.name}
-                </div>
-                <div className={`text-[9px] font-mono flex items-center justify-center gap-1 ${
-                  isVerified ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-400 dark:text-zinc-500'
-                }`}>
-                  {isVerified ? (
-                    <>
-                      <CheckCircle2 className="h-2.5 w-2.5" />
-                      VERIFIED
-                    </>
-                  ) : (
-                    <>
-                      <Clock className="h-2.5 w-2.5" />
-                      PENDING
-                    </>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {totalCases === 0 && (
-          <div className="p-3 rounded-lg border border-dashed border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/20 text-xs text-zinc-500 dark:text-zinc-400 flex flex-col sm:flex-row items-center justify-between gap-2">
-            <span>
-              🌱 <strong>Ready for MorphFS Build:</strong> Clean slate. As you build MorphFS, your AI agent can automatically create suites, tests, runs, crash evidence, environments, and milestones, or you can add them manually.
-            </span>
-            <Link href={`/projects/${resolvedId}/tests/new`}>
-              <Button size="xs" variant="outline" className="gap-1 border-purple-300 dark:border-purple-800 text-purple-700 dark:text-purple-300">
-                <Plus className="h-3 w-3" />
-                Add First Test Case
-              </Button>
-            </Link>
-          </div>
-        )}
-      </div>
+      )}
 
       {/* 4 Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

@@ -123,7 +123,7 @@ function LoginForm() {
               Sign In to MorphFS Workspace
             </CardTitle>
             <CardDescription className="text-xs text-zinc-400">
-              Access the 10 verification suites, invariant model checkers, and jury sign-off gates
+              Access verification suites, automated test runs, and quality reports
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">

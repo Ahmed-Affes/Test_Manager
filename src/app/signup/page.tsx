@@ -83,7 +83,7 @@ export default function SignUpPage() {
               Create Quality Engineering Account
             </CardTitle>
             <CardDescription className="text-xs text-zinc-400">
-              Join your engineering organization to collaborate on test suites and quality gates
+              Join your engineering organization to collaborate on test suites and quality assurance
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">

@@ -166,7 +166,7 @@ export default function ImportAndAgentPage() {
     ],
     signoff: {
       decision: 'conditional',
-      role: 'Automated AI Verification Gate',
+      role: 'Automated AI Quality Sign-Off',
       notes: 'Crash recovery and concurrency suites passed. Release blocked until xattr COW defect is resolved.',
     },
   };
@@ -207,7 +207,7 @@ What you have full access to create & manage automatically:
 - Execution History: Actual duration, passing/failing status, commit SHA, version
 - Crash Dumps & Evidence Vault: Attach logs, hex traces, and core dump filenames directly to the run or defect
 - Defect Tracking: Automatically opened if a test fails or crashes
-- Release Gates: Submit quality gating decisions (approved, conditional, rejected)
+- Quality Sign-Offs: Submit quality approval decisions (approved, conditional, rejected)
 
 Payload Format:
 {
@@ -251,7 +251,7 @@ Payload Format:
   ],
   "signoff": {
     "decision": "approved",
-    "role": "Lead Systems Architect Gate",
+    "role": "Lead Systems Architect",
     "notes": "Journal replay verified without metadata corruption."
   }
 }`;

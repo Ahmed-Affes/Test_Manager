@@ -7,10 +7,10 @@ export async function updateSession(request: NextRequest) {
   });
 
   const supabaseUrl =
-    process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
+    process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ayfwnyecpwnplbvdoexa.supabase.co';
   const supabaseAnonKey =
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.placeholder';
+    'sb_publishable_3VY65otJqHRG22tLcnjMCw_JE8NCYPC';
 
   const supabase = createServerClient(
     supabaseUrl,

@@ -10,7 +10,8 @@
     "lint": "next lint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "setup:db": "node scripts/setup-db.mjs"
+    "setup:db": "node scripts/setup-db.mjs",
+    "mcp": "node scripts/testmanager-mcp.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",

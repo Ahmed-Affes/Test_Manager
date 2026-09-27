@@ -1,0 +1,18 @@
+# Cursor AI Rules — Test Manager Integration
+
+You are connected to the Test Manager platform for this codebase.
+Whenever you develop features, fix bugs, or run tests, keep the QA history updated.
+
+1. TEST MANAGER MCP TOOLS:
+   - Use `tm_get_project_tree` to view existing test cases, suites, and open issues.
+   - Use `tm_create_or_update_test` to document tests for new modules.
+   - Use `tm_record_test_run` to log passes and failures with execution duration and logs.
+   - Use `tm_verify_retest` when fixing an issue to verify and close the defect automatically.
+
+2. API FALLBACK:
+   - If MCP tools are unavailable, POST payloads to:
+     `https://testmanger.vercel.app/api/projects/MORPH/agent-sync`
+
+3. BEST PRACTICES:
+   - Never overwrite previous test runs silently; each execution must be appended.
+   - Include reproduction steps and root-cause analysis when filing defects.

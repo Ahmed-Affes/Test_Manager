@@ -10,7 +10,6 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Modal } from '@/components/ui/modal';
 import { StatusBadge } from '@/components/ui/status-badge';
-import { logAuditEvent } from '@/lib/audit';
 
 interface JunitImportModalProps {
   isOpen: boolean;
@@ -279,19 +278,6 @@ export function JunitImportModal({
             }
           }
         }
-
-        await logAuditEvent({
-          projectId,
-          action: 'import_junit_xml',
-          entityType: 'test_run',
-          entityId: projectId,
-          details: {
-            total_tests: totalTests,
-            total_pass: totalPassed,
-            total_fail: totalFailures,
-            build_number: buildNumber,
-          },
-        });
 
         if (onImportComplete) {
           await onImportComplete();

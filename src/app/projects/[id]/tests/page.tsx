@@ -23,7 +23,6 @@ import { StatusBadge } from '@/components/ui/status-badge';
 import { TestCaseModal } from '@/components/cases/TestCaseModal';
 import { TestRunnerModal } from '@/components/execution/TestRunnerModal';
 import { formatDate } from '@/lib/utils';
-import { logAuditEvent } from '@/lib/audit';
 
 export default function TestCasesPage() {
   const params = useParams();
@@ -190,15 +189,6 @@ export default function TestCasesPage() {
 
       if (stepsErr) console.error('Insert steps error:', stepsErr);
     }
-
-    // 3. Log audit event
-    await logAuditEvent({
-      projectId,
-      action: 'create_test_case',
-      entityType: 'test_case',
-      entityId: newCase.id,
-      details: { key: testKey, title: caseData.title },
-    });
 
     await fetchData();
   };

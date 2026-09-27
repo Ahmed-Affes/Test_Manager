@@ -12,7 +12,6 @@ import {
   FileText,
   Users,
   Bot,
-  History,
   DownloadCloud,
   Settings,
   ChevronDown,
@@ -171,11 +170,6 @@ export function Sidebar({ currentProject, projects = [], userRole = 'tester' }: 
     {
       label: 'Workspace & Ops',
       items: [
-        {
-          title: 'Audit Trail',
-          href: `/projects/${projectId}/activity`,
-          icon: History,
-        },
         {
           title: 'Project Backup',
           href: `/projects/${projectId}/backup`,

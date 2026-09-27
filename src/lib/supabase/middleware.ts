@@ -45,7 +45,6 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname.startsWith('/reset-password');
 
   const isProtectedRoute =
-    request.nextUrl.pathname.startsWith('/dashboard') ||
     request.nextUrl.pathname.startsWith('/projects') ||
     request.nextUrl.pathname.startsWith('/notifications') ||
     request.nextUrl.pathname.startsWith('/profile');
@@ -58,10 +57,10 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // If user is already logged in and visits auth pages (login/signup), redirect to dashboard
+  // If user is already logged in and visits auth pages (login/signup), redirect to projects
   if (user && isAuthRoute) {
     const url = request.nextUrl.clone();
-    url.pathname = '/dashboard';
+    url.pathname = '/projects';
     return NextResponse.redirect(url);
   }
 

@@ -15,7 +15,6 @@ import {
   FileCode,
   Users,
   Settings,
-  History,
   Plus,
   Play,
   ArrowRight,
@@ -356,14 +355,6 @@ export function CommandPalette({
                 <span>Issues & Defects Queue</span>
               </Command.Item>
 
-              <Command.Item
-                value="audit trail activity log history"
-                onSelect={() => navigate(`/projects/${pId}/activity`)}
-                className="flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 my-0.5 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-              >
-                <History className="h-3.5 w-3.5 text-zinc-400" />
-                <span>Audit Trail Log</span>
-              </Command.Item>
 
               <Command.Item
                 value="backup restore testmanager archive"

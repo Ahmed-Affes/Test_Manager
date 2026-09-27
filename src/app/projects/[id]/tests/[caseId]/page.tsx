@@ -30,7 +30,6 @@ import { RetestButton } from '@/components/issues/RetestButton';
 import { EvidenceGallery } from '@/components/evidence/EvidenceGallery';
 import { EvidenceUploader } from '@/components/evidence/EvidenceUploader';
 import { formatDate, formatDuration, resolveProjectId } from '@/lib/utils';
-import { logAuditEvent } from '@/lib/audit';
 
 export default function TestCaseDetailPage() {
   const params = useParams();
@@ -236,14 +235,6 @@ export default function TestCaseDetailPage() {
       .single();
 
     if (issueErr) throw issueErr;
-
-    await logAuditEvent({
-      projectId: pId,
-      action: 'create_issue',
-      entityType: 'issue',
-      entityId: newIssue.id,
-      details: { issue_key: issueKey, title: issueData.title },
-    });
 
     await fetchCaseDetails();
     setActiveTab('issues');

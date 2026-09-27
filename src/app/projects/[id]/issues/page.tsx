@@ -23,7 +23,6 @@ import { IssueModal } from '@/components/issues/IssueModal';
 import { RetestButton } from '@/components/issues/RetestButton';
 import { TestRunnerModal } from '@/components/execution/TestRunnerModal';
 import { formatDate, resolveProjectId } from '@/lib/utils';
-import { logAuditEvent } from '@/lib/audit';
 
 export default function IssuesPage() {
   const params = useParams();
@@ -135,14 +134,6 @@ export default function IssuesPage() {
       .single();
 
     if (error) throw error;
-
-    await logAuditEvent({
-      projectId: pId,
-      action: 'create_issue',
-      entityType: 'issue',
-      entityId: newIssue.id,
-      details: { issue_key: issueKey, title: issueData.title },
-    });
 
     await fetchIssues();
     if (typeof window !== 'undefined') {

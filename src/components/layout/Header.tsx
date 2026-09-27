@@ -57,6 +57,23 @@ export function Header({
   const [friendSimulatedOnline, setFriendSimulatedOnline] = React.useState(true);
   const [onlineUserIds, setOnlineUserIds] = React.useState<string[]>([]);
   const [teamMembers, setTeamMembers] = React.useState<TeamMemberPresence[]>([]);
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = React.useState(0);
+
+  // Fetch unread notifications
+  React.useEffect(() => {
+    async function checkNotifications() {
+      if (!user?.id) return;
+      try {
+        const { count } = await supabase
+          .from('notifications')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('is_read', false);
+        setUnreadNotificationsCount(count || 0);
+      } catch (e) {}
+    }
+    checkNotifications();
+  }, [user?.id, supabase]);
 
   // Dark mode detection
   React.useEffect(() => {
@@ -517,7 +534,9 @@ export function Header({
               className="text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 relative"
             >
               <Bell className="h-4 w-4" />
-              <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-blue-500" />
+              {unreadNotificationsCount > 0 && (
+                <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-blue-500" />
+              )}
             </Button>
           </Link>
 

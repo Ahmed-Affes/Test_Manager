@@ -261,21 +261,6 @@ export async function POST(
       }
     }
 
-    // 6. Record audit log
-    await admin.from('audit_logs').insert({
-      project_id: project.id,
-      action: 'retest_verification',
-      entity_type: 'test_run',
-      entity_id: newRun.id,
-      details: {
-        test_case_id: resolvedCaseId,
-        issue_id: issue_id || null,
-        status,
-        run_number: newRun.run_number,
-        resolved_issues_count: resolvedCount,
-      },
-    });
-
     return NextResponse.json({
       success: true,
       run: newRun,

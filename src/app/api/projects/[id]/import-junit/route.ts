@@ -378,26 +378,6 @@ export async function POST(
       }
     }
 
-    // Record audit event
-    await supabase.from('audit_logs').insert({
-      project_id: projectId,
-      action: 'ci_import_junit',
-      entity_type: 'test_run',
-      entity_id: projectId,
-      details: {
-        total_tests: parseResult.totalTests,
-        passed: parseResult.totalPass,
-        failed: parseResult.totalFail,
-        skipped: parseResult.totalSkipped,
-        runs_inserted: runsInserted,
-        cases_created: casesCreated,
-        suites_created: suitesCreated,
-        issues_created: issuesCreated,
-        build_number: buildNumber,
-        commit_sha: commitSha,
-      },
-    });
-
     return NextResponse.json({
       success: true,
       message: `Successfully processed ${parseResult.totalTests} tests`,

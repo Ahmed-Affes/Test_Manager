@@ -15,7 +15,6 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { logAuditEvent } from '@/lib/audit';
 
 export default function NewIssuePage() {
   const params = useParams();
@@ -111,15 +110,6 @@ export default function NewIssuePage() {
         .single();
 
       if (insertError) throw insertError;
-
-      // Log audit
-      await logAuditEvent({
-        projectId,
-        action: 'create',
-        entityType: 'issue',
-        entityId: newIssue.id,
-        metadata: { title: newIssue.title, issue_key: newIssue.issue_key, severity, priority },
-      });
 
       router.push(`/projects/${projectId}/issues`);
     } catch (err: any) {

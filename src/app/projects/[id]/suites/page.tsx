@@ -10,7 +10,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Modal } from '@/components/ui/modal';
-import { logAuditEvent } from '@/lib/audit';
 import { resolveProjectId } from '@/lib/utils';
 
 export default function SuitesPage() {
@@ -81,14 +80,6 @@ export default function SuitesPage() {
         .single();
 
       if (error) throw error;
-
-      await logAuditEvent({
-        projectId: pId,
-        action: 'create_suite',
-        entityType: 'test_suite',
-        entityId: newSuite.id,
-        details: { name: newSuite.name },
-      });
 
       setName('');
       setDescription('');

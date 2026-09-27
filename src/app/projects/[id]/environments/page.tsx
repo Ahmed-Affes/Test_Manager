@@ -20,7 +20,6 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Modal } from '@/components/ui/modal';
 import { formatDate, resolveProjectId } from '@/lib/utils';
-import { logAuditEvent } from '@/lib/audit';
 
 export default function EnvironmentsPage() {
   const params = useParams();
@@ -92,14 +91,6 @@ export default function EnvironmentsPage() {
         .single();
 
       if (error) throw error;
-
-      await logAuditEvent({
-        projectId: pId,
-        action: 'create_environment',
-        entityType: 'environment',
-        entityId: newEnv.id,
-        details: { name: newEnv.name, type: newEnv.type },
-      });
 
       setName('');
       setOs('');

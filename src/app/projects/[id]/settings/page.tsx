@@ -29,7 +29,6 @@ import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { logAuditEvent } from '@/lib/audit';
 
 type SettingsTab = 'general' | 'quality' | 'ai_agent' | 'danger';
 
@@ -126,14 +125,6 @@ export default function ProjectSettingsPage() {
         .eq('id', project.id);
 
       if (error) throw error;
-
-      await logAuditEvent({
-        projectId: project.id,
-        action: 'update_project_settings',
-        entityType: 'project',
-        entityId: project.id,
-        details: { name: name.trim(), accent_color: accentColor },
-      });
 
       setMessage({ text: 'Project configuration updated successfully!', type: 'success' });
       setTimeout(() => setMessage(null), 4000);

@@ -980,15 +980,6 @@ export async function POST(
       }
     }
 
-    // 14. Record Audit Log
-    await admin.from('audit_logs').insert({
-      project_id: project.id,
-      action: 'agent_sync',
-      entity_type: 'project',
-      entity_id: project.id,
-      details: summary,
-    });
-
     return NextResponse.json({
       success: true,
       project: { id: project.id, key: project.key, name: project.name },

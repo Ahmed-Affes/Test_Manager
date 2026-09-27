@@ -18,7 +18,6 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { logAuditEvent } from '@/lib/audit';
 
 interface StepItem {
   id: string;
@@ -181,15 +180,6 @@ export default function NewTestCasePage() {
         }));
         await supabase.from('test_steps').insert(stepRecords);
       }
-
-      // Log audit
-      await logAuditEvent({
-        projectId,
-        action: 'create',
-        entityType: 'test_case',
-        entityId: newCase.id,
-        metadata: { title: newCase.title, key: newCase.key, suite_id: finalSuiteId },
-      });
 
       router.push(`/projects/${projectId}/tests/${newCase.id}`);
     } catch (err: any) {

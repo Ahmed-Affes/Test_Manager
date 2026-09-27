@@ -16,7 +16,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { createClient } from '@/lib/supabase/client';
-import { logAuditEvent } from '@/lib/audit';
 
 export interface SignoffCardProps {
   projectId: string;
@@ -121,13 +120,6 @@ export function SignoffCard({
       if (error) {
         console.warn('report_signoffs insert error:', error.message);
       }
-
-      await logAuditEvent({
-        projectId,
-        action: 'create_signoff',
-        entityType: 'report_signoff',
-        details: { role, decision, pass_rate: calculatedPassRate, open_blockers: openBlockers },
-      });
 
       setIsModalOpen(false);
       setNotes('');

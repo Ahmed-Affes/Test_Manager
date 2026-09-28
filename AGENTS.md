@@ -92,10 +92,13 @@ If MCP is not active in your current session, use the REST endpoints:
 
 ## 2. Standard Autonomous Workflows
 
-### 1. After writing or modifying features:
-1. Generate or update corresponding test cases in Test Manager with explicit test steps.
-2. Run your local test command (e.g. `npm test` or dedicated verification script).
-3. Record the execution run:
+### 1. When requested to build or modify a feature:
+1. **Create a Dedicated Test Suite** named after the feature or architectural module (e.g. `Directory & Snapshot Engine`, `Authentication & Session Engine`).
+2. **Break down the feature into MULTIPLE discrete Test Cases** under that suite (typically 3 to 6 test cases covering: Creation / Happy Path, Query / Inspection, Rollback / State Mutation, and Edge Cases).
+   - **MANDATORY RULE:** NEVER create 1 single monolithic test case for an entire feature! Every feature MUST have multiple granular test cases.
+3. **Keep newly authored test cases as `untested`** (no execution runs yet) until real execution occurs.
+4. Run your local test command (e.g. `npm test` or dedicated verification script).
+5. Record execution runs individually for each test case as they are verified:
    - **ONLY** record `status: "pass"` if the test was executed with 100% success and 0 errors, OR if the user explicitly confirmed it.
    - If the code has not yet been executed, leave the test case as `"untested"` or run status as `"in_progress"`. **NEVER assume a pass!**
 

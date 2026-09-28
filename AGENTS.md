@@ -131,3 +131,23 @@ An AI agent is strictly permitted to record `status: "pass"` **ONLY** when one o
 - If code has been written or modified but the agent has NOT independently run verification tests, newly authored test cases MUST remain `untested` (or run status `in_progress`), **NEVER `pass`**.
 - When verifying bug fixes (`tm_verify_retest` or `tm_update_issue_status`), NEVER resolve or mark pass without running a retest that proves the failure condition is gone.
 
+---
+
+## 4. 🧩 Test Granularity: Single-Scenario Cases vs Monolithic Anti-Pattern
+
+**NEVER create a monolithic test case that crams multiple feature scenarios into steps of a single test case.**
+Monolithic test cases destroy coverage visibility, create false 0% pass rates, and conceal which specific behavior failed.
+
+### The Correct Hierarchy:
+1. **Test Suite = The Feature / Module:** A suite (e.g. `Directory & Snapshot Engine`) groups related test cases. A suite should contain **multiple** granular test cases, not just 1 giant case.
+2. **Test Case = One Specific Scenario / Behavior:** Each test case tests **ONE** discrete capability or edge case (single responsibility):
+   - `Case 1`: *Create and commit initial directory snapshot*
+   - `Case 2`: *Query folder revision history list*
+   - `Case 3`: *Recursive directory rollback and tombstone pruning*
+   - `Case 4`: *Concurrent modification during snapshot commit*
+3. **Test Steps = Micro-Actions for THAT Scenario:** Steps are solely the sequential commands needed to verify that *single* scenario.
+
+### Golden Rule:
+If a feature has 3 distinct behaviors (e.g. Create, List, Rollback), the agent **MUST** create 3 distinct test cases under the same suite, **NEVER** 1 test case with 3 steps.
+
+

@@ -78,15 +78,15 @@ const TOOLS = [
   },
   {
     name: 'tm_create_or_update_test',
-    description: 'Create a new test case or modify an existing test case in Test Manager. Can target by 1-based index (e.g. 1 for first test) or test key.',
+    description: 'Create a new test case or modify an existing test case in Test Manager. STRICT QA RULE: NEVER create monolithic test cases that cram multiple behaviors into one test. Each test case must verify ONE specific scenario (e.g. "Create Snapshot", "List History", "Recursive Rollback"). Group related test cases under the same suite name.',
     inputSchema: {
       type: 'object',
       properties: {
         projectKey: { type: 'string', description: 'Project key (e.g. MORPH)' },
         target: { type: 'string', description: 'Target existing test: "first", "last", a number string like "1", or a test key like "MORPH-001". Leave empty if creating new.' },
-        suite: { type: 'string', description: 'Name of the test suite (created automatically if it does not exist).' },
+        suite: { type: 'string', description: 'Name of the test suite (feature/module group). Multiple granular test cases should share the same suite.' },
         key: { type: 'string', description: 'Custom test key (e.g. MORPH-AUTH-001). Auto-generated if omitted.' },
-        title: { type: 'string', description: 'Clear, descriptive title of the test case.' },
+        title: { type: 'string', description: 'Clear, descriptive title of the specific scenario being tested.' },
         description: { type: 'string', description: 'Detailed specification of what this test verifies.' },
         type: {
           type: 'string',

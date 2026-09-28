@@ -51,27 +51,34 @@ export default function IssuesPage() {
       const pId = await resolveProjectId(supabase, projectId);
       setResolvedProjectId(pId);
 
-      const { data: issuesData, error } = await supabase
-        .from('issues')
-        .select(`
-          *,
-          test_case:test_cases(id, key, title, steps:test_steps(*)),
-          test_run:test_runs(id, run_number, status)
-        `)
-        .eq('project_id', pId)
-        .order('created_at', { ascending: false });
+      // Fetch issues, cases, and environments concurrently
+      const [issuesRes, casesRes, envsRes] = await Promise.all([
+        supabase
+          .from('issues')
+          .select(`
+            *,
+            test_case:test_cases(id, key, title, steps:test_steps(*)),
+            test_run:test_runs(id, run_number, status)
+          `)
+          .eq('project_id', pId)
+          .order('created_at', { ascending: false }),
 
-      if (error) console.error('Fetch issues error:', error);
+        supabase
+          .from('test_cases')
+          .select('*')
+          .eq('project_id', pId),
 
-      const { data: casesData } = await supabase
-        .from('test_cases')
-        .select('*')
-        .eq('project_id', pId);
+        supabase
+          .from('environments')
+          .select('*')
+          .eq('project_id', pId),
+      ]);
 
-      const { data: envsData } = await supabase
-        .from('environments')
-        .select('*')
-        .eq('project_id', pId);
+      const issuesData = issuesRes.data;
+      const casesData = casesRes.data;
+      const envsData = envsRes.data;
+
+      if (issuesRes.error) console.error('Fetch issues error:', issuesRes.error);
 
       setIssues(issuesData || []);
       setTestCases(casesData || []);

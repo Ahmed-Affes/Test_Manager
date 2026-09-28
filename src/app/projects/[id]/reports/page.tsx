@@ -36,43 +36,20 @@ export default function ReportsPage() {
       const pId = await resolveProjectId(supabase, projectId);
       setResolvedProjectId(pId);
 
-      // 1. Fetch project info
-      const { data: proj } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('id', pId)
-        .single();
+      // Fetch all reports data concurrently
+      const [projRes, casesRes, runsRes, issRes, envsRes] = await Promise.all([
+        supabase.from('projects').select('*').eq('id', pId).maybeSingle(),
+        supabase.from('test_cases').select('*, suite:test_suites(name)').eq('project_id', pId),
+        supabase.from('test_runs').select('*, environment:environments(name)').eq('project_id', pId).order('created_at', { ascending: false }),
+        supabase.from('issues').select('*').eq('project_id', pId),
+        supabase.from('environments').select('*').eq('project_id', pId),
+      ]);
 
-      // 2. Fetch test cases with suite
-      const { data: cases } = await supabase
-        .from('test_cases')
-        .select('*, suite:test_suites(name)')
-        .eq('project_id', pId);
-
-      // 3. Fetch test runs
-      const { data: runs } = await supabase
-        .from('test_runs')
-        .select('*, environment:environments(name)')
-        .eq('project_id', pId)
-        .order('created_at', { ascending: false });
-
-      // 4. Fetch issues
-      const { data: iss } = await supabase
-        .from('issues')
-        .select('*')
-        .eq('project_id', pId);
-
-      // 5. Fetch environments
-      const { data: envs } = await supabase
-        .from('environments')
-        .select('*')
-        .eq('project_id', pId);
-
-      setProject(proj);
-      setTestCases(cases || []);
-      setTestRuns(runs || []);
-      setIssues(iss || []);
-      setEnvironments(envs || []);
+      setProject(projRes.data);
+      setTestCases(casesRes.data || []);
+      setTestRuns(runsRes.data || []);
+      setIssues(issRes.data || []);
+      setEnvironments(envsRes.data || []);
     } catch (err) {
       console.error('Fetch reports data error:', err);
     } finally {

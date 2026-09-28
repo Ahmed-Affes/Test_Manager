@@ -14,48 +14,40 @@ export default async function ProjectLayout({ children, params }: ProjectLayoutP
   const { id } = await params;
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+  const projectQuery = isUuid
+    ? supabase.from('projects').select('*').eq('id', id).maybeSingle()
+    : supabase.from('projects').select('*').ilike('key', id).maybeSingle();
+
+  // Run auth check and project query concurrently
+  const [
+    { data: { user } },
+    { data: project, error: projectError }
+  ] = await Promise.all([
+    supabase.auth.getUser(),
+    projectQuery
+  ]);
 
   if (!user) {
     redirect(`/login?redirectTo=/projects/${id}`);
   }
 
-  // Fetch current project by UUID id or Project Key
-  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-  const projectQuery = isUuid
-    ? supabase.from('projects').select('*').eq('id', id)
-    : supabase.from('projects').select('*').ilike('key', id);
-
-  const { data: project, error: projectError } = await projectQuery.single();
-
   if (projectError || !project) {
     notFound();
   }
 
-  // Fetch all projects for switcher
-  const { data: allProjects } = await supabase
-    .from('projects')
-    .select('*')
-    .order('created_at', { ascending: false });
+  // Fetch switcher projects, user role, and user profile concurrently
+  const [allProjectsRes, memberDataRes, profileRes] = await Promise.all([
+    supabase.from('projects').select('*').order('created_at', { ascending: false }),
+    supabase.from('project_members').select('role').eq('project_id', project.id).eq('user_id', user.id).maybeSingle(),
+    supabase.from('users').select('*').eq('id', user.id).maybeSingle(),
+  ]);
 
-  // Fetch user role for this project
-  const { data: memberData } = await supabase
-    .from('project_members')
-    .select('role')
-    .eq('project_id', project.id)
-    .eq('user_id', user.id)
-    .single();
+  const allProjects = allProjectsRes.data || [];
+  const memberData = memberDataRes.data;
+  const profile = profileRes.data;
 
   const userRole: ProjectRole = (memberData?.role as ProjectRole) || 'admin';
-
-  // Fetch user profile
-  const { data: profile } = await supabase
-    .from('users')
-    .select('*')
-    .eq('id', user.id)
-    .single();
 
   const userProfile: UserProfile = profile || {
     id: user.id,

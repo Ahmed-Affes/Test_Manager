@@ -58,33 +58,37 @@ export default function TestCasesPage() {
       }
       setResolvedProjectId(pId);
 
-      // 1. Fetch test cases with their steps, suite, and latest run
-      const { data: casesData, error: casesErr } = await supabase
-        .from('test_cases')
-        .select(`
-          *,
-          suite:test_suites(id, name),
-          steps:test_steps(*),
-          test_runs:test_runs(id, run_number, status, duration_ms, created_at)
-        `)
-        .eq('project_id', pId)
-        .order('created_at', { ascending: false });
+      // Fetch test cases, suites, and environments concurrently
+      const [casesRes, suitesRes, envsRes] = await Promise.all([
+        supabase
+          .from('test_cases')
+          .select(`
+            *,
+            suite:test_suites(id, name),
+            steps:test_steps(*),
+            test_runs:test_runs(id, run_number, status, duration_ms, created_at)
+          `)
+          .eq('project_id', pId)
+          .order('created_at', { ascending: false }),
 
-      if (casesErr) console.error('Fetch cases error:', casesErr);
+        supabase
+          .from('test_suites')
+          .select('*')
+          .eq('project_id', pId)
+          .order('name'),
 
-      // 2. Fetch suites
-      const { data: suitesData } = await supabase
-        .from('test_suites')
-        .select('*')
-        .eq('project_id', pId)
-        .order('name');
+        supabase
+          .from('environments')
+          .select('*')
+          .eq('project_id', pId)
+          .order('name'),
+      ]);
 
-      // 3. Fetch environments
-      const { data: envsData } = await supabase
-        .from('environments')
-        .select('*')
-        .eq('project_id', pId)
-        .order('name');
+      const casesData = casesRes.data;
+      const suitesData = suitesRes.data;
+      const envsData = envsRes.data;
+
+      if (casesRes.error) console.error('Fetch cases error:', casesRes.error);
 
       const formattedCases = (casesData || []).map((tc: any) => ({
         ...tc,

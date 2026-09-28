@@ -36,53 +36,97 @@ export default async function ProjectOverviewPage({ params }: ProjectOverviewPro
     if (proj) { projectName = proj.name; }
   }
 
-  // Fetch recent test cases
-  const { data: recentCases } = await supabase
-    .from('test_cases')
-    .select('id, key, title, suite:test_suites(name), test_runs:test_runs(status, created_at, run_number)')
-    .eq('project_id', resolvedId)
-    .order('created_at', { ascending: false })
-    .limit(6);
-
-  // Fetch counts
-  const { count: totalCases } = await supabase
-    .from('test_cases').select('*', { count: 'exact', head: true }).eq('project_id', resolvedId);
-
-  const { count: totalRuns } = await supabase
-    .from('test_runs').select('*', { count: 'exact', head: true }).eq('project_id', resolvedId);
-
-  const { count: passRuns } = await supabase
-    .from('test_runs').select('*', { count: 'exact', head: true }).eq('project_id', resolvedId).eq('status', 'pass');
-
-  const { count: failRuns } = await supabase
-    .from('test_runs').select('*', { count: 'exact', head: true }).eq('project_id', resolvedId).eq('status', 'fail');
-
-  const { count: blockedRuns } = await supabase
-    .from('test_runs').select('*', { count: 'exact', head: true }).eq('project_id', resolvedId).eq('status', 'blocked');
-
-  // Fetch open issues
-  const { data: openIssuesList } = await supabase
-    .from('issues')
-    .select('id, issue_key, title, severity, status, created_at')
-    .eq('project_id', resolvedId)
-    .in('status', ['open', 'investigating', 'in_progress'])
-    .order('created_at', { ascending: false })
-    .limit(5);
-
-  const { count: totalOpenIssues } = await supabase
-    .from('issues').select('*', { count: 'exact', head: true })
-    .eq('project_id', resolvedId)
-    .in('status', ['open', 'investigating', 'in_progress']);
-
   // Fetch last 7 days of runs for trend
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
-  const { data: recentRuns } = await supabase
-    .from('test_runs')
-    .select('status, created_at')
-    .eq('project_id', resolvedId)
-    .gte('created_at', sevenDaysAgo.toISOString())
-    .order('created_at', { ascending: true });
+
+  // Fetch all overview metrics concurrently in a single parallel roundtrip
+  const [
+    recentCasesRes,
+    totalCasesRes,
+    totalRunsRes,
+    passRunsRes,
+    failRunsRes,
+    blockedRunsRes,
+    openIssuesListRes,
+    totalOpenIssuesRes,
+    recentRunsRes,
+  ] = await Promise.all([
+    // Recent test cases
+    supabase
+      .from('test_cases')
+      .select('id, key, title, suite:test_suites(name), test_runs:test_runs(status, created_at, run_number)')
+      .eq('project_id', resolvedId)
+      .order('created_at', { ascending: false })
+      .limit(6),
+
+    // Total cases count
+    supabase
+      .from('test_cases')
+      .select('*', { count: 'exact', head: true })
+      .eq('project_id', resolvedId),
+
+    // Total runs count
+    supabase
+      .from('test_runs')
+      .select('*', { count: 'exact', head: true })
+      .eq('project_id', resolvedId),
+
+    // Pass runs count
+    supabase
+      .from('test_runs')
+      .select('*', { count: 'exact', head: true })
+      .eq('project_id', resolvedId)
+      .eq('status', 'pass'),
+
+    // Fail runs count
+    supabase
+      .from('test_runs')
+      .select('*', { count: 'exact', head: true })
+      .eq('project_id', resolvedId)
+      .eq('status', 'fail'),
+
+    // Blocked runs count
+    supabase
+      .from('test_runs')
+      .select('*', { count: 'exact', head: true })
+      .eq('project_id', resolvedId)
+      .eq('status', 'blocked'),
+
+    // Open issues list
+    supabase
+      .from('issues')
+      .select('id, issue_key, title, severity, status, created_at')
+      .eq('project_id', resolvedId)
+      .in('status', ['open', 'investigating', 'in_progress'])
+      .order('created_at', { ascending: false })
+      .limit(5),
+
+    // Open issues count
+    supabase
+      .from('issues')
+      .select('*', { count: 'exact', head: true })
+      .eq('project_id', resolvedId)
+      .in('status', ['open', 'investigating', 'in_progress']),
+
+    // Recent runs trend
+    supabase
+      .from('test_runs')
+      .select('status, created_at')
+      .eq('project_id', resolvedId)
+      .gte('created_at', sevenDaysAgo.toISOString())
+      .order('created_at', { ascending: true }),
+  ]);
+
+  const recentCases = recentCasesRes.data || [];
+  const totalCases = totalCasesRes.count || 0;
+  const totalRuns = totalRunsRes.count || 0;
+  const passRuns = passRunsRes.count || 0;
+  const failRuns = failRunsRes.count || 0;
+  const blockedRuns = blockedRunsRes.count || 0;
+  const openIssuesList = openIssuesListRes.data || [];
+  const totalOpenIssues = totalOpenIssuesRes.count || 0;
+  const recentRuns = recentRunsRes.data || [];
 
   // Build 7-day trend
   const trendDays: { date: string; label: string; pass: number; fail: number; total: number }[] = [];

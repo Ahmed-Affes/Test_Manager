@@ -286,7 +286,7 @@ export async function POST(
     const deleteTests: any[] = body.delete_tests || body.delete_cases || body.deleteTestCases || [];
     const deleteIssues: any[] = body.delete_issues || body.delete_bugs || [];
     const deleteSuites: any[] = body.delete_suites || [];
-    const retests: any[] = body.retests || (body.retest ? [body.retest] : []);
+    const retests: any[] = body.retests || body.verify_retests || (body.retest ? [body.retest] : []);
     const rawComments: any[] = body.comments || body.notes || [];
     const updateIssues: any[] = body.update_issues || body.patch_issues || [];
 

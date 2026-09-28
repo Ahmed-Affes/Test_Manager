@@ -78,7 +78,7 @@ const TOOLS = [
   },
   {
     name: 'tm_create_or_update_test',
-    description: 'Create a new test case or modify an existing test case in Test Manager. STRICT QA RULE: NEVER create monolithic test cases that cram multiple behaviors into one test. Each test case must verify ONE specific scenario (e.g. "Create Snapshot", "List History", "Recursive Rollback"). Group related test cases under the same suite name.',
+    description: 'Create a new test case or modify an existing test case in Test Manager. STRICT QA RULES: (1) NEVER create monolithic test cases; break features into granular single-scenario cases under the same suite. (2) Use SIMPLE, PLAIN ENGLISH for all titles, descriptions, and steps so anyone can easily read and understand without technical jargon overload.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -86,8 +86,8 @@ const TOOLS = [
         target: { type: 'string', description: 'Target existing test: "first", "last", a number string like "1", or a test key like "MORPH-001". Leave empty if creating new.' },
         suite: { type: 'string', description: 'Name of the test suite (feature/module group). Multiple granular test cases should share the same suite.' },
         key: { type: 'string', description: 'Custom test key (e.g. MORPH-AUTH-001). Auto-generated if omitted.' },
-        title: { type: 'string', description: 'Clear, descriptive title of the specific scenario being tested.' },
-        description: { type: 'string', description: 'Detailed specification of what this test verifies.' },
+        title: { type: 'string', description: 'Clear title in plain, simple English (e.g. "Save folder snapshot with 3 files").' },
+        description: { type: 'string', description: 'Simple explanation of what this test verifies in plain English.' },
         type: {
           type: 'string',
           enum: ['functional', 'integration', 'regression', 'smoke', 'performance', 'security', 'recovery', 'automated'],
@@ -95,19 +95,19 @@ const TOOLS = [
         },
         priority: { type: 'string', enum: ['low', 'medium', 'high', 'critical'] },
         severity: { type: 'string', enum: ['trivial', 'minor', 'major', 'critical', 'blocker'] },
-        preconditions: { type: 'string', description: 'Setup or prerequisites required before execution.' },
-        expected_result: { type: 'string', description: 'Expected overall successful outcome.' },
+        preconditions: { type: 'string', description: 'Setup or prerequisites required before execution in simple English.' },
+        expected_result: { type: 'string', description: 'Expected outcome in simple, clear English.' },
         steps: {
           type: 'array',
           items: {
             type: 'object',
             properties: {
-              action: { type: 'string', description: 'Action performed in this step' },
-              expected: { type: 'string', description: 'Expected outcome for this step' },
+              action: { type: 'string', description: 'Action performed in this step (plain English)' },
+              expected: { type: 'string', description: 'Expected outcome for this step (plain English)' },
             },
             required: ['action'],
           },
-          description: 'Ordered sequence of execution steps.',
+          description: 'Ordered sequence of execution steps in simple English.',
         },
       },
       required: ['title'],
@@ -127,7 +127,7 @@ const TOOLS = [
   },
   {
     name: 'tm_record_test_run',
-    description: 'Record an execution run for a test case (pass, fail, blocked, or skipped). STRICT QA RULE: NEVER set status to "pass" unless you independently executed concrete verification commands and observed 100% success, OR the human user explicitly confirmed it works. If not yet verified, do NOT mark pass.',
+    description: 'Record an execution run for a test case. WHEN TO MARK PASS: (1) If the AI can independently test backend code, CLI, or API logic and verifies 100% success with zero errors, it SHOULD record status "pass". (2) For UI/UX styling, visual layout, or things hard to verify 100% automatically, leave as "untested" until confirmed by the human user. NEVER mark "pass" on assumptions without real execution.',
     inputSchema: {
       type: 'object',
       properties: {

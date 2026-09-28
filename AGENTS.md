@@ -127,8 +127,8 @@ Prematurely declaring a `pass` conceals bugs, ruins test suite integrity, and cr
 
 ### The Golden Verification Protocol:
 An AI agent is strictly permitted to record `status: "pass"` **ONLY** when one of these two conditions is met:
-1. **Concrete Independent Execution:** The agent executed concrete test commands (e.g. `npm test`, automated test suite, CLI commands, HTTP request verification) and observed 100% success with zero errors.
-2. **Explicit User Confirmation:** The human user explicitly tested the feature/fix and told the agent it works (e.g. "it works", "it's passing now").
+1. **Concrete Independent Execution (Automated / Backend Tests):** The agent executed concrete test commands (e.g. `npm test`, CLI test runner, API calls, script assertions) and observed 100% success with zero errors. **When the AI can independently verify backend/code logic, it SHOULD run the test and mark `pass`** — do NOT leave easily verifiable tests as unexecuted!
+2. **Explicit User Confirmation (UI/UX & Visual Testing):** For visual UI/UX, animations, styling, or workflows that an agent cannot verify 100% on its own, leave them as `untested` until the human user tests them and explicitly confirms they work.
 
 ### Untested Code = Untested Status:
 - If code has been written or modified but the agent has NOT independently run verification tests, newly authored test cases MUST remain `untested` (or run status `in_progress`), **NEVER `pass`**.
@@ -144,13 +144,29 @@ Monolithic test cases destroy coverage visibility, create false 0% pass rates, a
 ### The Correct Hierarchy:
 1. **Test Suite = The Feature / Module:** A suite (e.g. `Directory & Snapshot Engine`) groups related test cases. A suite should contain **multiple** granular test cases, not just 1 giant case.
 2. **Test Case = One Specific Scenario / Behavior:** Each test case tests **ONE** discrete capability or edge case (single responsibility):
-   - `Case 1`: *Create and commit initial directory snapshot*
-   - `Case 2`: *Query folder revision history list*
-   - `Case 3`: *Recursive directory rollback and tombstone pruning*
-   - `Case 4`: *Concurrent modification during snapshot commit*
+   - `Case 1`: *Create and save folder snapshot*
+   - `Case 2`: *View folder history list*
+   - `Case 3`: *Restore folder to older version and clean up new files*
+   - `Case 4`: *Save folder while a file is being written*
 3. **Test Steps = Micro-Actions for THAT Scenario:** Steps are solely the sequential commands needed to verify that *single* scenario.
 
 ### Golden Rule:
 If a feature has 3 distinct behaviors (e.g. Create, List, Rollback), the agent **MUST** create 3 distinct test cases under the same suite, **NEVER** 1 test case with 3 steps.
+
+---
+
+## 5. 📖 Easy, Plain English Standard
+
+**Always write test titles, descriptions, and steps in simple, everyday English.**
+The dashboard must be easy and fast for anyone to read and understand without technical jargon overload.
+
+### Good vs Bad Examples:
+- ❌ **Avoid heavy jargon:** *"Deterministic Merkle root hash computation with immutable tombstone pruning"*
+- ✅ **Use plain English:** *"Save folder snapshot with 3 files"*
+- ❌ **Avoid heavy jargon:** *"Temporal directory traversal and inode differential reconciliation"*
+- ✅ **Use plain English:** *"Restore folder to an older version and remove new files"*
+- ❌ **Avoid heavy jargon:** *"Asynchronous stream concurrency contention lock verification"*
+- ✅ **Use plain English:** *"Save folder while another file is actively writing"*
+
 
 

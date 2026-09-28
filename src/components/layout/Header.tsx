@@ -17,29 +17,20 @@ import {
   Users,
   CheckCircle2,
   Clock,
+  Activity,
+  Wifi,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { createClient } from '@/lib/supabase/client';
 import { Project, UserProfile } from '@/lib/types';
 import { CommandPalette } from '@/components/layout/CommandPalette';
+import { useProjectPresence, formatActivityText, TeamMemberPresence } from '@/lib/hooks/useProjectPresence';
 
 interface HeaderProps {
   currentProject?: Project;
   user?: UserProfile | null;
   onOpenCommandPalette?: () => void;
   onOpenQuickExecute?: () => void;
-}
-
-interface TeamMemberPresence {
-  id: string;
-  name: string;
-  email: string;
-  role: 'owner' | 'admin' | 'tester' | 'viewer';
-  title: string;
-  duty: string;
-  initials: string;
-  avatarColor: string;
-  isOnline: boolean;
 }
 
 export function Header({
@@ -54,10 +45,14 @@ export function Header({
   const [coopMenuOpen, setCoopMenuOpen] = React.useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = React.useState(false);
   const [isDark, setIsDark] = React.useState(false);
-  const [friendSimulatedOnline, setFriendSimulatedOnline] = React.useState(true);
-  const [onlineUserIds, setOnlineUserIds] = React.useState<string[]>([]);
-  const [teamMembers, setTeamMembers] = React.useState<TeamMemberPresence[]>([]);
   const [unreadNotificationsCount, setUnreadNotificationsCount] = React.useState(0);
+
+  const {
+    members: resolvedMembers,
+    onlineMembers,
+    onlineCount,
+    isConnected,
+  } = useProjectPresence(currentProject?.id, user);
 
   // Fetch unread notifications
   React.useEffect(() => {
@@ -120,151 +115,18 @@ export function Header({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onOpenCommandPalette]);
 
-  // Fetch real project members and listen for real-time presence
-  React.useEffect(() => {
-    if (!currentProject?.id) return;
-
-    let isMounted = true;
-    const pId = currentProject.id;
-
-    const loadMembers = async () => {
-      try {
-        const { data: mData } = await supabase
-          .from('project_members')
-          .select('id, user_id, role')
-          .eq('project_id', pId);
-
-        const userIds = (mData || []).map((m: any) => m.user_id);
-        const { data: pData } = await supabase
-          .from('profiles')
-          .select('*')
-          .in('id', userIds);
-
-        if (!isMounted) return;
-
-        // Build roster with known profiles or defaults
-        const roster: TeamMemberPresence[] = [
-          {
-            id: '78d6ac01-5144-4327-a291-e703b27e103c',
-            name: 'Ahmed Affes',
-            email: 'ahmedaffes@gmail.com',
-            role: 'owner',
-            title: 'Lead Systems Architect & Core Author',
-            duty: 'Authoring Crash Consistency, Invariant Suites & Journal Testing',
-            initials: 'AA',
-            avatarColor: 'bg-purple-600',
-            isOnline: true, // Lead is always active when viewing
-          },
-          {
-            id: '79e1aa71-7e62-44f4-883f-4be8fee1f57e',
-            name: 'Wacim Abdelli',
-            email: 'wacimabdelli@gmail.com',
-            role: 'owner',
-            title: 'Systems Engineering Co-Author',
-            duty: 'Executing MFP Sync, Shell Extensions & Benchmark Cycles',
-            initials: 'WA',
-            avatarColor: 'bg-blue-600',
-            isOnline: friendSimulatedOnline,
-          },
-          {
-            id: '1406aa55-3c12-49f7-adf6-a30fbfea7f42',
-            name: 'Prof. Academic Advisor',
-            email: 'professor@morphfs.dev',
-            role: 'viewer',
-            title: 'Academic Advisor & PFE Jury Evaluator',
-            duty: 'Reviewing Verification Dossier & Formal PFE Defense Sign-Offs',
-            initials: 'PR',
-            avatarColor: 'bg-emerald-600',
-            isOnline: false, // Professor is viewer / review mode
-          },
-        ];
-
-        // Enrich with database role & profile updates if any
-        if (mData) {
-          mData.forEach((m: any) => {
-            const match = roster.find((r) => r.id === m.user_id);
-            if (match) {
-              match.role = m.role as any;
-            }
-          });
-        }
-        if (pData) {
-          pData.forEach((p: any) => {
-            const match = roster.find((r) => r.id === p.id);
-            if (match) {
-              if (p.full_name) match.name = p.full_name;
-              if (p.email) match.email = p.email;
-              if (p.full_name) {
-                const parts = p.full_name.trim().split(/\s+/);
-                if (parts.length >= 2) {
-                  match.initials = `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-                } else if (parts.length === 1 && parts[0].length >= 2) {
-                  match.initials = parts[0].substring(0, 2).toUpperCase();
-                }
-              }
-            }
-          });
-        }
-
-        setTeamMembers(roster);
-      } catch (err) {
-        console.error('Error fetching members for header:', err);
-      }
-    };
-
-    loadMembers();
-
-    // Supabase Realtime Presence Channel
-    const channel = supabase.channel(`presence:morphfs:${pId}`, {
-      config: {
-        presence: {
-          key: user?.id || 'guest-session',
-        },
-      },
+  // Sorted members for popover: current user first, then online, then away, then offline
+  const sortedMembers = React.useMemo(() => {
+    return [...resolvedMembers].sort((a, b) => {
+      if (a.isCurrentUser) return -1;
+      if (b.isCurrentUser) return 1;
+      if (a.isOnline && !b.isOnline) return -1;
+      if (!a.isOnline && b.isOnline) return 1;
+      if (a.status === 'online' && b.status === 'away') return -1;
+      if (a.status === 'away' && b.status === 'online') return 1;
+      return 0;
     });
-
-    channel
-      .on('presence', { event: 'sync' }, () => {
-        const state = channel.presenceState();
-        const activeIds = Object.keys(state);
-        setOnlineUserIds(activeIds);
-      })
-      .on('presence', { event: 'join' }, ({ key }) => {
-        setOnlineUserIds((prev) => Array.from(new Set([...prev, key])));
-      })
-      .on('presence', { event: 'leave' }, ({ key }) => {
-        setOnlineUserIds((prev) => prev.filter((id) => id !== key));
-      })
-      .subscribe(async (status) => {
-        if (status === 'SUBSCRIBED' && user) {
-          await channel.track({
-            user_id: user.id,
-            email: user.email,
-            full_name: user.full_name,
-            online_at: new Date().toISOString(),
-          });
-        }
-      });
-
-    return () => {
-      isMounted = false;
-      supabase.removeChannel(channel);
-    };
-  }, [currentProject?.id, user, friendSimulatedOnline, supabase]);
-
-  // Compute live presence state
-  const resolvedMembers = teamMembers.map((m) => {
-    const isSelf = user?.id === m.id || user?.email === m.email;
-    const isChannelOnline = onlineUserIds.includes(m.id);
-    const isFriend =
-      m.id === '79e1aa71-7e62-44f4-883f-4be8fee1f57e' ||
-      m.email === 'wacimabdelli@gmail.com' ||
-      m.email === 'friend@morphfs.dev';
-    const isOnline = isSelf || (isFriend ? friendSimulatedOnline : isChannelOnline);
-    return { ...m, isOnline };
-  });
-
-  const onlineCount = resolvedMembers.filter((m) => m.isOnline).length;
+  }, [resolvedMembers]);
 
   const handleOpenSearch = () => {
     if (onOpenCommandPalette) {
@@ -308,38 +170,47 @@ export function Header({
               type="button"
               onClick={() => setCoopMenuOpen(!coopMenuOpen)}
               className="flex items-center gap-2.5 px-3 py-1.5 rounded-full border border-purple-200/80 dark:border-purple-500/30 bg-purple-50/70 dark:bg-purple-950/40 hover:bg-purple-100/80 dark:hover:bg-purple-900/50 hover:border-purple-300 dark:hover:border-purple-500/50 transition-all text-xs shadow-xs group cursor-pointer"
-              title="Co-Op Team Collaboration Status (Online / Offline Presence)"
+              title="Co-Op Team Collaboration Status (Real-time Live Peer Mesh)"
             >
-              {/* Sleek Avatar Stack with clean cutouts & zero clipping artifacts */}
+              {/* Sleek Avatar Stack with clean cutouts & live presence rings */}
               <div className="flex items-center -space-x-2">
                 {resolvedMembers.map((m, idx) => (
                   <div
                     key={m.id}
                     style={{ zIndex: 10 - idx }}
                     className="relative shrink-0"
-                    title={`${m.name} (${m.role.toUpperCase()}) - ${m.isOnline ? 'Online' : 'Offline'}`}
+                    title={`${m.name} (${m.role.toUpperCase()}) - ${
+                      m.status === 'online' ? 'Active Now' : m.status === 'away' ? 'Away' : 'Offline'
+                    }`}
                   >
                     <div
                       className={`h-6 w-6 rounded-full ${m.avatarColor} border-2 border-white dark:border-zinc-950 flex items-center justify-center text-[10px] font-bold text-white shadow-xs transition-transform group-hover:scale-105 ${
-                        m.isOnline ? 'opacity-100' : 'opacity-65'
+                        m.isOnline ? 'opacity-100 ring-1 ring-emerald-500/40' : 'opacity-60'
                       }`}
                     >
                       {m.initials}
                     </div>
-                    {m.isOnline && (
+                    {m.status === 'online' && (
                       <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full bg-emerald-500 ring-1.5 ring-white dark:ring-zinc-950 shadow-xs" />
+                    )}
+                    {m.status === 'away' && (
+                      <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full bg-amber-500 ring-1.5 ring-white dark:ring-zinc-950 shadow-xs" />
                     )}
                   </div>
                 ))}
               </div>
 
               <span className="text-[11px] font-mono font-medium text-purple-700 dark:text-purple-300 hidden sm:inline">
-                Co-Op ({onlineCount} Online)
+                Co-Op ({onlineCount} Live)
               </span>
 
               <span
                 className={`h-2 w-2 rounded-full transition-colors ${
-                  onlineCount > 0 ? 'bg-emerald-500 animate-pulse ring-2 ring-emerald-500/30' : 'bg-zinc-400'
+                  onlineCount > 0
+                    ? 'bg-emerald-500 animate-pulse ring-2 ring-emerald-500/30'
+                    : isConnected
+                      ? 'bg-zinc-400'
+                      : 'bg-amber-400'
                 }`}
               />
             </button>
@@ -351,71 +222,112 @@ export function Header({
                   className="fixed inset-0 z-40"
                   onClick={() => setCoopMenuOpen(false)}
                 />
-                <div className="absolute left-1/2 -translate-x-1/2 top-9 z-50 w-80 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-3 shadow-2xl text-xs space-y-3 animate-in fade-in-50 zoom-in-95 ring-1 ring-black/5 dark:ring-white/10">
-                  <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2">
-                    <div className="font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
-                      <Radio className="h-3.5 w-3.5 text-purple-500 animate-pulse" />
-                      <span>MorphFS Co-Op Live Session</span>
+                <div className="absolute left-1/2 -translate-x-1/2 top-9 z-50 w-84 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-3 shadow-2xl text-xs space-y-3 animate-in fade-in-50 zoom-in-95 ring-1 ring-black/5 dark:ring-white/10">
+                  <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <div className="relative flex h-6 w-6 items-center justify-center rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
+                        <Radio className="h-3.5 w-3.5 animate-pulse" />
+                      </div>
+                      <div>
+                        <div className="font-semibold text-zinc-900 dark:text-zinc-100 leading-tight">
+                          MorphFS Co-Op Live Session
+                        </div>
+                        <div className="text-[9.5px] text-zinc-500 dark:text-zinc-400 font-mono flex items-center gap-1.5 mt-0.5">
+                          <span
+                            className={`h-1.5 w-1.5 rounded-full ${
+                              isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-400'
+                            }`}
+                          />
+                          <span>
+                            {isConnected ? 'Supabase Realtime Peer Mesh' : 'Connecting to presence...'}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    <span className="font-mono text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-300 dark:border-emerald-800">
+                    <span className="font-mono text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-800/80 shadow-2xs flex items-center gap-1">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping inline-block" />
                       {onlineCount} ACTIVE
                     </span>
                   </div>
 
-                  {/* Members List with Online/Offline Status and Roles */}
-                  <div className="space-y-2">
-                    {resolvedMembers.map((m) => (
+                  {/* Members List with Real Live Presence, Status, and Active Route */}
+                  <div className="space-y-2 max-h-[380px] overflow-y-auto pr-0.5">
+                    {sortedMembers.map((m) => (
                       <div
                         key={m.id}
-                        className={`p-2 rounded-lg border transition-all ${
-                          m.isOnline
-                            ? 'bg-zinc-50/80 dark:bg-zinc-950/60 border-purple-200 dark:border-purple-900/40'
-                            : 'bg-zinc-100/50 dark:bg-zinc-900/40 border-zinc-200 dark:border-zinc-800 opacity-75'
+                        className={`p-2.5 rounded-lg border transition-all ${
+                          m.status === 'online'
+                            ? 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-500/30 dark:border-emerald-800/40 shadow-2xs'
+                            : m.status === 'away'
+                              ? 'bg-amber-50/40 dark:bg-amber-950/20 border-amber-500/30 dark:border-amber-800/40'
+                              : 'bg-zinc-50/60 dark:bg-zinc-900/40 border-zinc-200/80 dark:border-zinc-800/80 opacity-80'
                         }`}
                       >
                         <div className="flex items-start justify-between gap-2">
-                          <div className="flex items-center gap-2">
-                            <div className="relative">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="relative shrink-0">
                               <div
-                                className={`h-7 w-7 rounded-full ${m.avatarColor} flex items-center justify-center text-[10px] font-bold text-white shadow-sm`}
+                                className={`h-7 w-7 rounded-full ${m.avatarColor} flex items-center justify-center text-[10px] font-bold text-white shadow-xs`}
                               >
                                 {m.initials}
                               </div>
                               <span
                                 className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white dark:border-zinc-900 ${
-                                  m.isOnline ? 'bg-emerald-500' : 'bg-zinc-400'
+                                  m.status === 'online'
+                                    ? 'bg-emerald-500'
+                                    : m.status === 'away'
+                                      ? 'bg-amber-500'
+                                      : 'bg-zinc-400'
                                 }`}
                               />
                             </div>
 
-                            <div>
-                              <div className="font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
-                                <span>{m.name}</span>
+                            <div className="min-w-0">
+                              <div className="font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5 truncate">
+                                <span className="truncate">{m.name}</span>
+                                {m.isCurrentUser && (
+                                  <span className="px-1.5 py-0.2 rounded text-[8.5px] font-mono font-bold bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 uppercase shrink-0">
+                                    YOU
+                                  </span>
+                                )}
                                 {m.role === 'owner' ? (
-                                  <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-300 dark:border-purple-800 uppercase">
+                                  <span className="px-1.5 py-0.2 rounded text-[8.5px] font-mono font-bold bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-300 dark:border-purple-800 uppercase shrink-0">
                                     OWNER
                                   </span>
-                                ) : (
-                                  <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-300 dark:border-zinc-700 uppercase">
+                                ) : m.role === 'admin' ? (
+                                  <span className="px-1.5 py-0.2 rounded text-[8.5px] font-mono font-bold bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-800 uppercase shrink-0">
+                                    ADMIN
+                                  </span>
+                                ) : m.role === 'viewer' ? (
+                                  <span className="px-1.5 py-0.2 rounded text-[8.5px] font-mono font-bold bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-300 dark:border-zinc-700 uppercase shrink-0">
                                     VIEWER
+                                  </span>
+                                ) : (
+                                  <span className="px-1.5 py-0.2 rounded text-[8.5px] font-mono font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800 uppercase shrink-0">
+                                    TESTER
                                   </span>
                                 )}
                               </div>
-                              <div className="text-[10px] text-zinc-500 dark:text-zinc-400 font-mono">
+                              <div className="text-[10px] text-zinc-500 dark:text-zinc-400 font-mono truncate">
                                 {m.email}
                               </div>
                             </div>
                           </div>
 
-                          {/* Online / Offline status badge */}
+                          {/* Online / Away / Offline status badge */}
                           <div className="shrink-0 text-right">
-                            {m.isOnline ? (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-300 dark:border-emerald-800">
+                            {m.status === 'online' ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-800/80 shadow-2xs">
                                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                ONLINE
+                                ACTIVE
+                              </span>
+                            ) : m.status === 'away' ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60 px-2 py-0.5 rounded-full border border-amber-300 dark:border-amber-800/80">
+                                <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                                AWAY
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-mono text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded border border-zinc-200 dark:border-zinc-700">
+                              <span className="inline-flex items-center gap-1 text-[10px] font-mono text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full border border-zinc-200 dark:border-zinc-700">
                                 <span className="h-1.5 w-1.5 rounded-full bg-zinc-400" />
                                 OFFLINE
                               </span>
@@ -423,27 +335,27 @@ export function Header({
                           </div>
                         </div>
 
-                        <div className="text-[10px] text-zinc-600 dark:text-zinc-400 mt-1.5 pl-9 leading-tight">
+                        {/* Live Activity path or human relative time */}
+                        <div className="mt-1.5 pl-9 text-[10px] flex items-center gap-1.5">
+                          <Activity className="h-3 w-3 text-purple-500 shrink-0" />
+                          <span className="text-zinc-700 dark:text-zinc-300 font-medium truncate">
+                            {formatActivityText(m)}
+                          </span>
+                        </div>
+
+                        {/* Permanent role/duty */}
+                        <div className="text-[9.5px] text-zinc-500 dark:text-zinc-400 mt-0.5 pl-9 leading-tight font-mono truncate">
                           {m.duty}
                         </div>
                       </div>
                     ))}
                   </div>
 
-                  {/* Presence Simulator Controls for Testing */}
-                  <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between text-[10px]">
-                    <span className="text-zinc-500">Co-Op Presence:</span>
-                    <button
-                      type="button"
-                      onClick={() => setFriendSimulatedOnline(!friendSimulatedOnline)}
-                      className="px-2 py-0.5 rounded text-[10px] font-mono text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30 hover:bg-blue-100 dark:hover:bg-blue-900/40 border border-blue-200 dark:border-blue-800 transition-colors cursor-pointer"
-                    >
-                      {friendSimulatedOnline ? 'Toggle Wacim to Offline' : 'Toggle Wacim to Online'}
-                    </button>
-                  </div>
-
                   <div className="border-t border-zinc-100 dark:border-zinc-800 pt-2 flex items-center justify-between text-[10px] text-zinc-500 dark:text-zinc-400 font-mono">
-                    <span>Role Policy: 2 Owners, 1 Viewer</span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      Live Peer-to-Peer Verification
+                    </span>
                     <Link
                       href={currentProject ? `/projects/${currentProject.id}/members` : '#'}
                       onClick={() => setCoopMenuOpen(false)}

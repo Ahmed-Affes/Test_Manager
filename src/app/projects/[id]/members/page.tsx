@@ -16,7 +16,8 @@ import { useProjectPresence, formatActivityText } from '@/lib/hooks/useProjectPr
 
 export default function MembersPage() {
   const params = useParams();
-  const projectId = params.id as string;
+  const rawId = params?.id;
+  const projectId = (Array.isArray(rawId) ? rawId[0] : (rawId as string)) || '';
   const supabase = createClient();
 
   const [currentUser, setCurrentUser] = React.useState<any>(null);
@@ -41,16 +42,17 @@ export default function MembersPage() {
     });
   }, [supabase]);
 
-  const { members: presenceMembers, isConnected } = useProjectPresence(projectId, currentUser);
+  const { members: presenceMembers = [], isConnected } = useProjectPresence(projectId, currentUser);
 
-  const ahmedPresence = presenceMembers.find(
-    (m) => m.id === '78d6ac01-5144-4327-a291-e703b27e103c' || m.email === 'ahmedaffes@gmail.com'
+  const safePresence = presenceMembers || [];
+  const ahmedPresence = safePresence.find(
+    (m) => m?.id === '78d6ac01-5144-4327-a291-e703b27e103c' || m?.email === 'ahmedaffes@gmail.com'
   );
-  const wacimPresence = presenceMembers.find(
-    (m) => m.id === '79e1aa71-7e62-44f4-883f-4be8fee1f57e' || m.email === 'wacimabdelli@gmail.com'
+  const wacimPresence = safePresence.find(
+    (m) => m?.id === '79e1aa71-7e62-44f4-883f-4be8fee1f57e' || m?.email === 'wacimabdelli@gmail.com'
   );
-  const profPresence = presenceMembers.find(
-    (m) => m.id === '1406aa55-3c12-49f7-adf6-a30fbfea7f42' || m.email === 'professor@morphfs.dev'
+  const profPresence = safePresence.find(
+    (m) => m?.id === '1406aa55-3c12-49f7-adf6-a30fbfea7f42' || m?.email === 'professor@morphfs.dev'
   );
 
   const fetchMembers = React.useCallback(async () => {
@@ -60,8 +62,8 @@ export default function MembersPage() {
       const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(projectId);
       let pId = projectId;
       if (!isUuid) {
-        const { data: p } = await supabase.from('projects').select('id').ilike('key', projectId).single();
-        if (p) pId = p.id;
+        const { data: p } = await supabase.from('projects').select('id').ilike('key', projectId).maybeSingle();
+        if (p?.id) pId = p.id;
       }
 
       const { data: mData, error: mErr } = await supabase
@@ -71,15 +73,19 @@ export default function MembersPage() {
 
       if (mErr) throw mErr;
 
-      const userIds = (mData || []).map((m: any) => m.user_id);
-      const { data: pData } = await supabase
-        .from('profiles')
-        .select('*')
-        .in('id', userIds);
+      const userIds = (mData || []).map((m: any) => m.user_id).filter(Boolean);
+      let pData: any[] = [];
+      if (userIds.length > 0) {
+        const { data } = await supabase
+          .from('profiles')
+          .select('*')
+          .in('id', userIds);
+        pData = data || [];
+      }
 
       const combined = (mData || []).map((m: any) => ({
         ...m,
-        user: pData?.find((p: any) => p.id === m.user_id),
+        user: pData.find((p: any) => p.id === m.user_id),
       }));
 
       setMembers(combined);
@@ -315,10 +321,13 @@ export default function MembersPage() {
           </div>
         ) : (
           members.map((m) => {
-            const memberPresence = presenceMembers.find(
+            const memberPresence = safePresence.find(
               (pm) =>
-                pm.id === m.user_id ||
-                (m.user?.email && pm.email?.toLowerCase() === m.user.email.toLowerCase())
+                pm &&
+                (pm.id === m.user_id ||
+                  (m.user?.email &&
+                    typeof pm.email === 'string' &&
+                    pm.email.toLowerCase() === m.user.email.toLowerCase()))
             );
             return (
               <div

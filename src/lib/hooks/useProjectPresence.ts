@@ -88,32 +88,111 @@ function getAvatarColor(idOrEmail: string): string {
   return PALETTE[Math.abs(hash) % PALETTE.length];
 }
 
-export function formatActivityText(member: TeamMemberPresence): string {
-  if (member.isOnline) {
-    if (member.status === 'away') {
-      return 'Away • Inactive in background';
+export function formatActivityText(member?: TeamMemberPresence | null): string {
+  if (!member) return 'Offline';
+  try {
+    if (member.isOnline) {
+      if (member.status === 'away') {
+        return 'Away • Inactive in background';
+      }
+      if (member.currentPath) {
+        const p = member.currentPath.toLowerCase();
+        if (p.includes('/issues') || p.includes('/defects')) return 'Investigating Defects & Issues';
+        if (p.includes('/suites') || p.includes('/cases')) return 'Authoring & Inspecting Test Suites';
+        if (p.includes('/runs') || p.includes('/execute')) return 'Executing Test Verification Run';
+        if (p.includes('/gates') || p.includes('/quality-gates')) return 'Reviewing Quality Gates & Sign-Offs';
+        if (p.includes('/evidence')) return 'Auditing Execution Evidence & Traces';
+        if (p.includes('/members')) return 'Managing Co-Op Engineering Roster';
+        if (p.includes('/reports')) return 'Analyzing Test Coverage & Metrics';
+        if (p.includes('/profile')) return 'Managing Engineer Account';
+        if (p.includes('/new')) return 'Authoring Test Artifact';
+        return 'Active in MorphFS Verification Workspace';
+      }
+      return member.duty || 'Active in MorphFS Verification Workspace';
     }
-    if (member.currentPath) {
-      const p = member.currentPath.toLowerCase();
-      if (p.includes('/issues') || p.includes('/defects')) return 'Investigating Defects & Issues';
-      if (p.includes('/suites') || p.includes('/cases')) return 'Authoring & Inspecting Test Suites';
-      if (p.includes('/runs') || p.includes('/execute')) return 'Executing Test Verification Run';
-      if (p.includes('/gates') || p.includes('/quality-gates')) return 'Reviewing Quality Gates & Sign-Offs';
-      if (p.includes('/evidence')) return 'Auditing Execution Evidence & Traces';
-      if (p.includes('/members')) return 'Managing Co-Op Engineering Roster';
-      if (p.includes('/reports')) return 'Analyzing Test Coverage & Metrics';
-      if (p.includes('/profile')) return 'Managing Engineer Account';
-      if (p.includes('/new')) return 'Authoring Test Artifact';
-      return 'Active in MorphFS Verification Workspace';
-    }
-    return member.duty || 'Active in MorphFS Verification Workspace';
-  }
 
-  // Offline
-  if (member.lastSeenAt) {
-    return `Last seen ${formatRelativeTime(member.lastSeenAt)}`;
+    // Offline
+    if (member.lastSeenAt) {
+      const rel = formatRelativeTime(member.lastSeenAt);
+      if (rel && rel !== '—') {
+        return `Last seen ${rel}`;
+      }
+    }
+    return member.duty || 'Offline';
+  } catch {
+    return member.duty || 'Offline';
   }
-  return member.duty || 'Offline';
+}
+
+// Module-level shared channel registry to prevent duplicate Supabase Realtime channel
+// subscription errors ("cannot add callbacks after subscribe") when multiple components
+// (e.g. Header and MembersPage) mount concurrently.
+interface PresenceSubscriber {
+  onStateChange: (state: Record<string, PresencePayload[]>) => void;
+  onConnectionChange: (connected: boolean) => void;
+}
+
+interface SharedProjectChannel {
+  channel: any;
+  subscribers: Set<PresenceSubscriber>;
+  state: Record<string, PresencePayload[]>;
+  isConnected: boolean;
+}
+
+const sharedChannels = new Map<string, SharedProjectChannel>();
+
+function getSharedChannel(supabase: any, projectId: string, currentUserId?: string) {
+  const channelName = `presence:project:${projectId.toLowerCase()}`;
+  let shared = sharedChannels.get(channelName);
+  if (!shared) {
+    const channel = supabase.channel(channelName, {
+      config: {
+        presence: {
+          key: currentUserId || `anon-${Math.random().toString(36).substring(2, 9)}`,
+        },
+      },
+    });
+
+    shared = {
+      channel,
+      subscribers: new Set<PresenceSubscriber>(),
+      state: {},
+      isConnected: false,
+    };
+
+    const broadcastState = () => {
+      if (!shared) return;
+      try {
+        const state = (channel.presenceState() || {}) as Record<string, PresencePayload[]>;
+        shared.state = state;
+        shared.isConnected = true;
+        for (const sub of shared.subscribers) {
+          sub.onStateChange(state);
+          sub.onConnectionChange(true);
+        }
+      } catch (err) {
+        console.error('Error broadcasting presence state:', err);
+      }
+    };
+
+    channel
+      .on('presence', { event: 'sync' }, broadcastState)
+      .on('presence', { event: 'join' }, broadcastState)
+      .on('presence', { event: 'leave' }, broadcastState)
+      .subscribe((status: string) => {
+        if (!shared) return;
+        if (status === 'SUBSCRIBED') {
+          shared.isConnected = true;
+          for (const sub of shared.subscribers) {
+            sub.onConnectionChange(true);
+          }
+          broadcastState();
+        }
+      });
+
+    sharedChannels.set(channelName, shared);
+  }
+  return { channelName, shared };
 }
 
 export function useProjectPresence(projectId?: string, user?: UserProfile | null) {
@@ -138,7 +217,6 @@ export function useProjectPresence(projectId?: string, user?: UserProfile | null
     if (!projectId) return;
 
     try {
-      // Resolve UUID if projectId is key (like "MORPH")
       const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(projectId);
       let resolvedId = projectId;
 
@@ -157,18 +235,22 @@ export function useProjectPresence(projectId?: string, user?: UserProfile | null
         .eq('project_id', resolvedId);
 
       const currentUser = userRef.current;
-      const userIds = (mData || []).map((m: any) => m.user_id);
+      const userIds = (mData || []).map((m: any) => m.user_id).filter(Boolean);
       if (currentUser?.id && !userIds.includes(currentUser.id)) {
         userIds.push(currentUser.id);
       }
 
-      const { data: pData } = await supabase
-        .from('profiles')
-        .select('*')
-        .in('id', userIds);
+      let pData: any[] = [];
+      if (userIds.length > 0) {
+        const { data } = await supabase
+          .from('profiles')
+          .select('*')
+          .in('id', userIds);
+        pData = data || [];
+      }
 
       const list = (mData || []).map((m: any) => {
-        const profile = (pData || []).find((p: any) => p.id === m.user_id);
+        const profile = pData.find((p: any) => p.id === m.user_id);
         return {
           id: m.user_id,
           member_id: m.id,
@@ -180,7 +262,7 @@ export function useProjectPresence(projectId?: string, user?: UserProfile | null
 
       // Ensure current user is present if they belong to project
       if (currentUser?.id && !list.some((item) => item.id === currentUser.id)) {
-        const profile = (pData || []).find((p: any) => p.id === currentUser.id) || {
+        const profile = pData.find((p: any) => p.id === currentUser.id) || {
           id: currentUser.id,
           email: currentUser.email,
           full_name: currentUser.full_name,
@@ -206,28 +288,35 @@ export function useProjectPresence(projectId?: string, user?: UserProfile | null
     loadMembers();
   }, [loadMembers]);
 
-  // 2. Realtime Presence Subscription
+  // 2. Realtime Presence Subscription using shared channel manager
   React.useEffect(() => {
     if (!projectId) return;
 
-    const currentUserId = user?.id;
-    // Use unified project channel
-    const channelName = `presence:project:${projectId.toLowerCase()}`;
-    const channel = supabase.channel(channelName, {
-      config: {
-        presence: {
-          key: currentUserId || `anon-${Math.random().toString(36).substring(2, 9)}`,
-        },
-      },
-    });
+    const { channelName, shared } = getSharedChannel(supabase, projectId, user?.id);
 
-    channelRef.current = channel;
+    const subscriber: PresenceSubscriber = {
+      onStateChange: (newState) => {
+        setPresenceStateMap(newState);
+      },
+      onConnectionChange: (connected) => {
+        setIsConnected(connected);
+      },
+    };
+
+    shared.subscribers.add(subscriber);
+
+    if (shared.isConnected) {
+      setIsConnected(true);
+      setPresenceStateMap(shared.state);
+    }
+
+    channelRef.current = shared.channel;
 
     const trackCurrentPresence = async (status: 'online' | 'away') => {
       const u = userRef.current;
-      if (!u?.id) return;
+      if (!u?.id || !shared.channel || !shared.isConnected) return;
       try {
-        await channel.track({
+        await shared.channel.track({
           user_id: u.id,
           email: u.email,
           full_name: u.full_name || 'Collaborator',
@@ -242,31 +331,19 @@ export function useProjectPresence(projectId?: string, user?: UserProfile | null
       }
     };
 
-    channel
-      .on('presence', { event: 'sync' }, () => {
-        const state = channel.presenceState() as Record<string, PresencePayload[]>;
-        setPresenceStateMap(state);
-        setIsConnected(true);
-      })
-      .on('presence', { event: 'join' }, () => {
-        const state = channel.presenceState() as Record<string, PresencePayload[]>;
-        setPresenceStateMap(state);
-      })
-      .on('presence', { event: 'leave' }, () => {
-        const state = channel.presenceState() as Record<string, PresencePayload[]>;
-        setPresenceStateMap(state);
-      })
-      .subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') {
-          setIsConnected(true);
-          await trackCurrentPresence(userStatusRef.current);
-        }
-      });
+    if (shared.isConnected) {
+      trackCurrentPresence(userStatusRef.current);
+    }
 
     return () => {
-      supabase.removeChannel(channel);
+      shared.subscribers.delete(subscriber);
+      if (shared.subscribers.size === 0) {
+        try {
+          supabase.removeChannel(shared.channel);
+        } catch (e) {}
+        sharedChannels.delete(channelName);
+      }
       channelRef.current = null;
-      setIsConnected(false);
     };
   }, [projectId, user?.id, supabase]);
 
@@ -282,16 +359,18 @@ export function useProjectPresence(projectId?: string, user?: UserProfile | null
       userStatusRef.current = status;
       const u = userRef.current;
       if (channelRef.current && isConnected && u?.id) {
-        channelRef.current.track({
-          user_id: u.id,
-          email: u.email,
-          full_name: u.full_name || 'Collaborator',
-          avatar_url: u.avatar_url || null,
-          status,
-          current_path: typeof window !== 'undefined' ? window.location.pathname : '',
-          online_at: onlineAtRef.current,
-          last_active_at: new Date().toISOString(),
-        });
+        try {
+          channelRef.current.track({
+            user_id: u.id,
+            email: u.email,
+            full_name: u.full_name || 'Collaborator',
+            avatar_url: u.avatar_url || null,
+            status,
+            current_path: typeof window !== 'undefined' ? window.location.pathname : '',
+            online_at: onlineAtRef.current,
+            last_active_at: new Date().toISOString(),
+          });
+        } catch (err) {}
       }
     };
 
@@ -338,16 +417,18 @@ export function useProjectPresence(projectId?: string, user?: UserProfile | null
   React.useEffect(() => {
     const u = userRef.current;
     if (!u?.id || !channelRef.current || !isConnected) return;
-    channelRef.current.track({
-      user_id: u.id,
-      email: u.email,
-      full_name: u.full_name || 'Collaborator',
-      avatar_url: u.avatar_url || null,
-      status: userStatusRef.current,
-      current_path: pathname || '',
-      online_at: onlineAtRef.current,
-      last_active_at: new Date().toISOString(),
-    });
+    try {
+      channelRef.current.track({
+        user_id: u.id,
+        email: u.email,
+        full_name: u.full_name || 'Collaborator',
+        avatar_url: u.avatar_url || null,
+        status: userStatusRef.current,
+        current_path: pathname || '',
+        online_at: onlineAtRef.current,
+        last_active_at: new Date().toISOString(),
+      });
+    } catch (err) {}
   }, [pathname, isConnected, user?.id]);
 
   // 5. Database Heartbeat (keeps profiles.updated_at fresh for accurate "last seen")
@@ -372,7 +453,6 @@ export function useProjectPresence(projectId?: string, user?: UserProfile | null
 
   // 6. Compute resolved members with live presence
   const resolvedMembers: TeamMemberPresence[] = React.useMemo(() => {
-    // If no db members loaded yet, use known defaults so UI never flickers empty
     const sourceList =
       dbMembers.length > 0
         ? dbMembers
@@ -413,13 +493,13 @@ export function useProjectPresence(projectId?: string, user?: UserProfile | null
           ];
 
     return sourceList.map((item) => {
-      const id = item.id;
-      const profile = item.profile || {};
+      const id = item?.id || '';
+      const profile = item?.profile || {};
       const known = KNOWN_DUTIES[id];
 
       const name = profile.full_name || known?.title || 'Team Member';
       const email = profile.email || 'engineer@morphfs.dev';
-      const role = (item.role || 'tester') as ProjectRole;
+      const role = (item?.role || 'tester') as ProjectRole;
       const title = profile.role_title || known?.title || 'Systems Engineer';
       const duty = known?.duty || profile.role_title || 'Systems Engineering & Quality Verification';
       const initials = getInitials(name, email);
@@ -427,13 +507,17 @@ export function useProjectPresence(projectId?: string, user?: UserProfile | null
 
       const isCurrentUser = Boolean(user?.id && (user.id === id || user.email === email));
 
-      // Check active Realtime presence state
-      // Presence key in Supabase can match user_id or presence entry user_id
+      // Check active Realtime presence state safely
       const presencesForUser =
         presenceStateMap[id] ||
         Object.values(presenceStateMap)
           .flat()
-          .filter((p) => p.user_id === id || (email && p.email?.toLowerCase() === email.toLowerCase()));
+          .filter(
+            (p) =>
+              p &&
+              (p.user_id === id ||
+                (email && typeof p.email === 'string' && p.email.toLowerCase() === email.toLowerCase()))
+          );
 
       let isOnline = false;
       let status: 'online' | 'away' | 'offline' = 'offline';
@@ -441,15 +525,16 @@ export function useProjectPresence(projectId?: string, user?: UserProfile | null
       let onlineAt: string | null = null;
       let lastActiveAt: string | null = null;
 
-      if (presencesForUser.length > 0) {
+      if (presencesForUser && presencesForUser.length > 0) {
         const latestPresence = presencesForUser[0];
-        isOnline = true;
-        status = latestPresence.status || 'online';
-        currentPath = latestPresence.current_path || null;
-        onlineAt = latestPresence.online_at || null;
-        lastActiveAt = latestPresence.last_active_at || null;
+        if (latestPresence) {
+          isOnline = true;
+          status = latestPresence.status || 'online';
+          currentPath = latestPresence.current_path || null;
+          onlineAt = latestPresence.online_at || null;
+          lastActiveAt = latestPresence.last_active_at || null;
+        }
       } else if (isCurrentUser && isConnected) {
-        // Fallback for self while socket initializes
         isOnline = true;
         status = userStatusRef.current || 'online';
         currentPath = pathname || null;
@@ -459,7 +544,7 @@ export function useProjectPresence(projectId?: string, user?: UserProfile | null
 
       const lastSeenAt = isOnline
         ? null
-        : profile.updated_at || item.created_at || '2026-09-25T20:23:02.990Z';
+        : profile.updated_at || item?.created_at || '2026-09-25T20:23:02.990Z';
 
       return {
         id,

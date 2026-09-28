@@ -23,6 +23,7 @@ import { IssueModal } from '@/components/issues/IssueModal';
 import { RetestButton } from '@/components/issues/RetestButton';
 import { TestRunnerModal } from '@/components/execution/TestRunnerModal';
 import { formatDate, resolveProjectId } from '@/lib/utils';
+import { useRealtimeProject } from '@/lib/hooks/useRealtimeProject';
 
 export default function IssuesPage() {
   const params = useParams();
@@ -82,18 +83,13 @@ export default function IssuesPage() {
     }
   }, [projectId, supabase]);
 
+  // Initial load
   React.useEffect(() => {
-    if (projectId) {
-      fetchIssues();
-      const interval = setInterval(fetchIssues, 4000);
-      const onFocus = () => fetchIssues();
-      window.addEventListener('focus', onFocus);
-      return () => {
-        clearInterval(interval);
-        window.removeEventListener('focus', onFocus);
-      };
-    }
+    if (projectId) fetchIssues();
   }, [projectId, fetchIssues]);
+
+  // Realtime subscription — updates instantly when AI agent or anyone changes data
+  useRealtimeProject(resolvedProjectId, fetchIssues);
 
   const handleSaveIssue = async (issueData: any) => {
     const pId = await resolveProjectId(supabase, projectId);

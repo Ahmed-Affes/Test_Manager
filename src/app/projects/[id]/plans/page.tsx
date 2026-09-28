@@ -11,6 +11,7 @@ import { Modal } from '@/components/ui/modal';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatDate } from '@/lib/utils';
+import { useRealtimeProject } from '@/lib/hooks/useRealtimeProject';
 
 export default function PlansPage() {
   const params = useParams();
@@ -22,6 +23,7 @@ export default function PlansPage() {
   const [isCreateOpen, setIsCreateOpen] = React.useState(false);
   const [planName, setPlanName] = React.useState('');
   const [planDesc, setPlanDesc] = React.useState('');
+  const [resolvedProjectId, setResolvedProjectId] = React.useState<string>('');
 
   const fetchPlans = React.useCallback(async () => {
     if (!projectId) return;
@@ -33,6 +35,7 @@ export default function PlansPage() {
         const { data: p } = await supabase.from('projects').select('id').ilike('key', projectId).single();
         if (p) pId = p.id;
       }
+      setResolvedProjectId(pId);
 
       const { data, error } = await supabase
         .from('test_plans')
@@ -53,6 +56,9 @@ export default function PlansPage() {
   React.useEffect(() => {
     fetchPlans();
   }, [fetchPlans]);
+
+  // Realtime subscription — updates when AI agent creates plans/milestones
+  useRealtimeProject(resolvedProjectId, fetchPlans);
 
   const handleCreatePlan = async (e: React.FormEvent) => {
     e.preventDefault();

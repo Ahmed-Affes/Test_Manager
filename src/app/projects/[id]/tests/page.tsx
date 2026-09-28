@@ -23,6 +23,7 @@ import { StatusBadge } from '@/components/ui/status-badge';
 import { TestCaseModal } from '@/components/cases/TestCaseModal';
 import { TestRunnerModal } from '@/components/execution/TestRunnerModal';
 import { formatDate } from '@/lib/utils';
+import { useRealtimeProject } from '@/lib/hooks/useRealtimeProject';
 
 export default function TestCasesPage() {
   const params = useParams();
@@ -34,6 +35,7 @@ export default function TestCasesPage() {
   const [suites, setSuites] = React.useState<TestSuite[]>([]);
   const [environments, setEnvironments] = React.useState<Environment[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const [resolvedProjectId, setResolvedProjectId] = React.useState<string>('');
 
   // Filters
   const [searchQuery, setSearchQuery] = React.useState('');
@@ -54,6 +56,7 @@ export default function TestCasesPage() {
         const { data: p } = await supabase.from('projects').select('id').ilike('key', projectId).single();
         if (p) pId = p.id;
       }
+      setResolvedProjectId(pId);
 
       // 1. Fetch test cases with their steps, suite, and latest run
       const { data: casesData, error: casesErr } = await supabase
@@ -103,10 +106,11 @@ export default function TestCasesPage() {
   }, [projectId, supabase]);
 
   React.useEffect(() => {
-    if (projectId) {
-      fetchData();
-    }
+    if (projectId) fetchData();
   }, [projectId, fetchData]);
+
+  // Realtime subscription — instant updates when AI agent posts a test run or new case
+  useRealtimeProject(resolvedProjectId, fetchData);
 
   // Handle saving new test case
   const handleSaveTestCase = async (caseData: any) => {

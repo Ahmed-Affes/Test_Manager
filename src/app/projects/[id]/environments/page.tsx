@@ -20,6 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Modal } from '@/components/ui/modal';
 import { formatDate, resolveProjectId } from '@/lib/utils';
+import { useRealtimeProject } from '@/lib/hooks/useRealtimeProject';
 
 export default function EnvironmentsPage() {
   const params = useParams();
@@ -30,6 +31,7 @@ export default function EnvironmentsPage() {
   const [loading, setLoading] = React.useState(true);
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
+  const [resolvedProjectId, setResolvedProjectId] = React.useState<string>('');
 
   // Form fields
   const [name, setName] = React.useState('');
@@ -43,6 +45,7 @@ export default function EnvironmentsPage() {
     setLoading(true);
     try {
       const pId = await resolveProjectId(supabase, projectId);
+      setResolvedProjectId(pId);
 
       const { data, error } = await supabase
         .from('environments')
@@ -63,10 +66,11 @@ export default function EnvironmentsPage() {
   }, [projectId, supabase]);
 
   React.useEffect(() => {
-    if (projectId) {
-      fetchEnvironments();
-    }
+    if (projectId) fetchEnvironments();
   }, [projectId, fetchEnvironments]);
+
+  // Realtime subscription — updates when AI agent registers a new environment
+  useRealtimeProject(resolvedProjectId, fetchEnvironments);
 
   const handleCreateEnvironment = async (e: React.FormEvent) => {
     e.preventDefault();

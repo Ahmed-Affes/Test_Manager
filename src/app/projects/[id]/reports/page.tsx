@@ -15,6 +15,7 @@ import {
 import { ReportGenerator } from '@/components/reports/ReportGenerator';
 import { createClient } from '@/lib/supabase/client';
 import { formatDate, resolveProjectId } from '@/lib/utils';
+import { useRealtimeProject } from '@/lib/hooks/useRealtimeProject';
 
 export default function ReportsPage() {
   const params = useParams();
@@ -27,11 +28,13 @@ export default function ReportsPage() {
   const [issues, setIssues] = React.useState<any[]>([]);
   const [environments, setEnvironments] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const [resolvedProjectId, setResolvedProjectId] = React.useState<string>('');
 
   const fetchData = React.useCallback(async () => {
     setLoading(true);
     try {
       const pId = await resolveProjectId(supabase, projectId);
+      setResolvedProjectId(pId);
 
       // 1. Fetch project info
       const { data: proj } = await supabase
@@ -78,11 +81,11 @@ export default function ReportsPage() {
   }, [projectId, supabase]);
 
   React.useEffect(() => {
-    if (projectId) {
-      fetchData();
-    }
+    if (projectId) fetchData();
   }, [projectId, fetchData]);
 
+  // Realtime subscription — report refreshes live as AI agent records runs and bugs
+  useRealtimeProject(resolvedProjectId, fetchData);
 
   if (loading) {
     return (

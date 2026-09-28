@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Modal } from '@/components/ui/modal';
 import { resolveProjectId } from '@/lib/utils';
+import { useRealtimeProject } from '@/lib/hooks/useRealtimeProject';
 
 export default function SuitesPage() {
   const params = useParams();
@@ -52,10 +53,11 @@ export default function SuitesPage() {
   }, [projectId, supabase]);
 
   React.useEffect(() => {
-    if (projectId) {
-      fetchSuites();
-    }
+    if (projectId) fetchSuites();
   }, [projectId, fetchSuites]);
+
+  // Realtime subscription — updates when AI agent adds test cases to suites
+  useRealtimeProject(resolvedProjectId, fetchSuites);
 
   const handleCreateSuite = async (e: React.FormEvent) => {
     e.preventDefault();

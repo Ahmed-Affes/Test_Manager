@@ -366,23 +366,26 @@ async function handleToolCall(name, args) {
         commit_sha: args.commit_sha,
       };
 
-      const payload = {
-        runs: [runItem],
-      };
-
+      let payload;
       if (args.create_defect && args.status === 'fail') {
-        payload.tests = [
-          {
-            target: args.target,
-            run: runItem,
-            create_defect: true,
-            defect: {
-              title: args.defect_title || `Automated failure in ${args.target}`,
-              severity: args.defect_severity || 'critical',
-              root_cause: args.defect_root_cause || args.actual_result || null,
+        payload = {
+          tests: [
+            {
+              target: args.target,
+              run: runItem,
+              create_defect: true,
+              defect: {
+                title: args.defect_title || `Automated failure in ${args.target}`,
+                severity: args.defect_severity || 'critical',
+                root_cause: args.defect_root_cause || args.actual_result || null,
+              },
             },
-          },
-        ];
+          ],
+        };
+      } else {
+        payload = {
+          runs: [runItem],
+        };
       }
 
       const res = await callAgentSyncApi(projectKey, payload);
@@ -411,9 +414,20 @@ async function handleToolCall(name, args) {
     case 'tm_get_issue': {
       // Fetch the project tree and filter to the single issue
       const data = await getProjectTree(projectKey);
-      const found = (data.issues || []).find(
-        (i) => i.issue_key?.toLowerCase() === String(args.issue_key).toLowerCase()
-      );
+      const searchKey = String(args.issue_key).trim().toLowerCase();
+      const numMatch = searchKey.match(/\d+$/);
+      const targetNum = numMatch ? parseInt(numMatch[0], 10) : null;
+
+      const found = (data.issues || []).find((i) => {
+        if (!i) return false;
+        if (i.id?.toLowerCase() === searchKey) return true;
+        if (i.issue_key?.toLowerCase() === searchKey) return true;
+        if (targetNum !== null) {
+          const iNumMatch = i.issue_key?.match(/\d+$/);
+          if (iNumMatch && parseInt(iNumMatch[0], 10) === targetNum) return true;
+        }
+        return false;
+      });
       if (!found) {
         return { success: false, error: `Issue not found: ${args.issue_key}` };
       }

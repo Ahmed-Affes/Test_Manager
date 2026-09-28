@@ -161,19 +161,19 @@ export async function GET(
     const totalCases = (cases || []).length;
     const passCount = (cases || []).filter((c) => {
       const r = c.runs && c.runs.length > 0
-        ? [...c.runs].sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
+        ? [...c.runs].sort((a: any, b: any) => (b.run_number || 0) - (a.run_number || 0) || new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
         : null;
       return r?.status === 'pass';
     }).length;
     const failCount = (cases || []).filter((c) => {
       const r = c.runs && c.runs.length > 0
-        ? [...c.runs].sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
+        ? [...c.runs].sort((a: any, b: any) => (b.run_number || 0) - (a.run_number || 0) || new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
         : null;
       return r?.status === 'fail';
     }).length;
     const blockedCount = (cases || []).filter((c) => {
       const r = c.runs && c.runs.length > 0
-        ? [...c.runs].sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
+        ? [...c.runs].sort((a: any, b: any) => (b.run_number || 0) - (a.run_number || 0) || new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
         : null;
       return r?.status === 'blocked';
     }).length;
@@ -506,50 +506,69 @@ export async function POST(
     // Helper to find existing case by various user-friendly identifiers
     function findExistingCase(item: any) {
       if (!item) return null;
+      if (typeof item === 'string' || typeof item === 'number') {
+        item = { target: item };
+      }
 
       // 1. Direct UUID
-      if (item.id) {
-        const match = existingCasesList.find((c) => c.id === item.id);
+      const idCandidate =
+        item.id ||
+        (typeof item.target === 'string' &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item.target.trim())
+          ? item.target.trim()
+          : null);
+      if (idCandidate) {
+        const match = existingCasesList.find((c) => c.id.toLowerCase() === idCandidate.toLowerCase());
         if (match) return match;
       }
 
-      // 2. Exact or case-insensitive Key
-      const keyCandidate = item.key || item.test_case_key || item.testKey || item.target_key;
+      // 2. Exact or case-insensitive Key (check key, test_case_key, testKey, target_key, target, target_test, test_target)
+      const keyCandidate =
+        item.key ||
+        item.test_case_key ||
+        item.testKey ||
+        item.target_key ||
+        item.target ||
+        item.target_test ||
+        item.test_target;
       if (keyCandidate) {
-        const match = existingCasesList.find((c) => c.key.toLowerCase() === String(keyCandidate).toLowerCase().trim());
+        const keyTrimmed = String(keyCandidate).toLowerCase().trim();
+        const match = existingCasesList.find((c) => c.key.toLowerCase() === keyTrimmed);
         if (match) return match;
       }
 
-      // 3. 1-based index or "first test" / "first" / "target": "first"
-      const isFirst =
-        item.first === true ||
-        item.first_test === true ||
-        item.target === 'first' ||
-        item.target === '1' ||
-        item.index === 1 ||
-        item.order === 1;
-
-      if (isFirst && existingCasesList.length > 0) {
-        return existingCasesList[0];
+      // 3. Positional / 1-based index ("first", "last", or numeric string / number)
+      const targetStr = typeof item.target === 'string' ? item.target.toLowerCase().trim() : '';
+      if (targetStr === 'first' || item.first === true || item.first_test === true) {
+        if (existingCasesList.length > 0) return existingCasesList[0];
+      }
+      if (targetStr === 'last' || item.last === true || item.last_test === true) {
+        if (existingCasesList.length > 0) return existingCasesList[existingCasesList.length - 1];
       }
 
-      const numIdx = typeof item.index === 'number' ? item.index : typeof item.order === 'number' ? item.order : null;
-      if (numIdx && numIdx > 0 && numIdx <= existingCasesList.length) {
+      let numIdx: number | null = null;
+      if (typeof item.index === 'number') numIdx = item.index;
+      else if (typeof item.order === 'number') numIdx = item.order;
+      else if (typeof item.target === 'number') numIdx = item.target;
+      else if (targetStr && /^\d+$/.test(targetStr)) numIdx = parseInt(targetStr, 10);
+
+      if (numIdx !== null && numIdx > 0 && numIdx <= existingCasesList.length) {
         return existingCasesList[numIdx - 1];
       }
 
-      // 4. Match by Title
+      // 4. Exact Title Match
       if (item.title) {
         const titleTrimmed = String(item.title).toLowerCase().trim();
         const match = existingCasesList.find((c) => c.title.toLowerCase().trim() === titleTrimmed);
         if (match) return match;
       }
 
-      // 5. Target test string
-      if (item.target_test) {
-        const str = String(item.target_test).toLowerCase().trim();
+      // 5. Target / target_test matching title or partial title
+      const strToMatch = item.target_test || item.test_target || item.target;
+      if (strToMatch) {
+        const str = String(strToMatch).toLowerCase().trim();
         const match = existingCasesList.find(
-          (c) => c.key.toLowerCase() === str || c.title.toLowerCase().includes(str)
+          (c) => c.key.toLowerCase() === str || c.title.toLowerCase() === str || c.title.toLowerCase().includes(str)
         );
         if (match) return match;
       }
@@ -557,30 +576,69 @@ export async function POST(
       return null;
     }
 
+    // Helper to find existing issue by UUID, exact key, or flexible format
+    // (e.g. MORPH-BUG-1, BUG-MORPH-001, BUG-MORPH-1, or pure number string '1')
+    async function findExistingIssue(target: any) {
+      if (!target) return null;
+      const str = (typeof target === 'object' ? target.issue_key || target.key || target.id : String(target)).trim();
+      if (!str) return null;
+
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+      if (isUuid) {
+        const { data } = await admin.from('issues').select('*').eq('id', str).eq('project_id', project.id).maybeSingle();
+        if (data) return data;
+      }
+
+      // Exact case-insensitive match
+      const { data: exact } = await admin.from('issues').select('*').ilike('issue_key', str).eq('project_id', project.id).maybeSingle();
+      if (exact) return exact;
+
+      // Extract numeric suffix if present
+      const numMatch = str.match(/\d+$/);
+      if (numMatch) {
+        const num = parseInt(numMatch[0], 10);
+        const { data: allIssues } = await admin.from('issues').select('*').eq('project_id', project.id);
+        if (allIssues && allIssues.length > 0) {
+          const matched = allIssues.find((i) => {
+            if (i.issue_key.toLowerCase() === str.toLowerCase()) return true;
+            const iNumMatch = i.issue_key.match(/\d+$/);
+            return iNumMatch && parseInt(iNumMatch[0], 10) === num;
+          });
+          if (matched) return matched;
+        }
+      }
+
+      return null;
+    }
+
+    // Helper to safely delete a test case and all associated cascade data
+    async function deleteTestCaseWithCascade(caseId: string) {
+      // 1. Delete test_step_results for all runs on this case
+      const { data: runsToDel } = await admin.from('test_runs').select('id').eq('test_case_id', caseId);
+      if (runsToDel && runsToDel.length > 0) {
+        await admin.from('test_step_results').delete().in('test_run_id', runsToDel.map((r) => r.id));
+      }
+
+      // 2. Delete issue_history for all issues on this case
+      const { data: issuesToDel } = await admin.from('issues').select('id').eq('test_case_id', caseId);
+      if (issuesToDel && issuesToDel.length > 0) {
+        await admin.from('issue_history').delete().in('issue_id', issuesToDel.map((i) => i.id));
+      }
+
+      await admin.from('test_steps').delete().eq('test_case_id', caseId);
+      await admin.from('test_runs').delete().eq('test_case_id', caseId);
+      await admin.from('issues').delete().eq('test_case_id', caseId);
+      await admin.from('evidence').delete().eq('test_case_id', caseId);
+      await admin.from('test_plan_items').delete().eq('test_case_id', caseId);
+      await admin.from('test_cases').delete().eq('id', caseId);
+    }
+
     // 6. Handle explicit delete_tests array
     if (Array.isArray(deleteTests) && deleteTests.length > 0) {
       for (const target of deleteTests) {
-        let matched = null;
-        if (typeof target === 'object') {
-          matched = findExistingCase(target);
-        } else if (typeof target === 'number') {
-          matched = existingCasesList[target - 1] || null;
-        } else if (typeof target === 'string') {
-          if (target === 'first' || target === 'first_test') {
-            matched = existingCasesList[0] || null;
-          } else {
-            matched = findExistingCase({ key: target, id: target, title: target });
-          }
-        }
-
+        const matched = findExistingCase(target);
         if (matched) {
-          await admin.from('test_steps').delete().eq('test_case_id', matched.id);
-          await admin.from('test_runs').delete().eq('test_case_id', matched.id);
-          await admin.from('issues').delete().eq('test_case_id', matched.id);
-          await admin.from('evidence').delete().eq('test_case_id', matched.id);
-          await admin.from('test_plan_items').delete().eq('test_case_id', matched.id);
-          await admin.from('test_cases').delete().eq('id', matched.id);
-
+          await deleteTestCaseWithCascade(matched.id);
           summary.deleted_cases++;
           existingCasesList = existingCasesList.filter((c) => c.id !== matched.id);
         }
@@ -596,13 +654,7 @@ export async function POST(
         // Check if this action is explicitly a deletion
         if (item.action === 'delete' || item.delete === true) {
           if (matched) {
-            await admin.from('test_steps').delete().eq('test_case_id', matched.id);
-            await admin.from('test_runs').delete().eq('test_case_id', matched.id);
-            await admin.from('issues').delete().eq('test_case_id', matched.id);
-            await admin.from('evidence').delete().eq('test_case_id', matched.id);
-            await admin.from('test_plan_items').delete().eq('test_case_id', matched.id);
-            await admin.from('test_cases').delete().eq('id', matched.id);
-
+            await deleteTestCaseWithCascade(matched.id);
             summary.deleted_cases++;
             existingCasesList = existingCasesList.filter((c) => c.id !== matched.id);
           }
@@ -773,30 +825,50 @@ export async function POST(
                 await admin.from('test_step_results').insert(stepResults);
               }
 
-              // Auto-create defect on failure
-              if ((runStatus === 'fail' || runStatus === 'blocked') && item.create_defect !== false) {
-                const issueKey = `BUG-${project.key}-${String(summary.created_runs + Date.now().toString().slice(-3))}`;
-                const defect = item.defect || item.issue || {};
-                const { data: createdIssue } = await admin.from('issues').insert({
-                  project_id: project.id,
-                  test_case_id: caseId,
-                  test_run_id: testRun.id,
-                  issue_key: issueKey,
-                  title: defect.title || `[Defect] ${testTitle} verification failed`,
-                  description:
-                    defect.description ||
-                    runParam.actual_result ||
-                    'Automated execution failure detected during AI agent verification.',
-                  severity: defect.severity || item.severity || 'major',
-                  priority: defect.priority || item.priority || 'high',
-                  status: defect.status || 'open',
-                  root_cause: defect.root_cause || null,
-                  fix_description: defect.fix_description || null,
-                  related_commit: runParam.commit_sha || null,
-                }).select('id').single();
+              // Auto-create defect on failure if requested and not already open
+              const shouldCreateDefect = item.create_defect === true || Boolean(item.defect || item.issue);
+              if ((runStatus === 'fail' || runStatus === 'blocked') && shouldCreateDefect) {
+                const { data: openBugs } = await admin
+                  .from('issues')
+                  .select('id, issue_key, status')
+                  .eq('test_case_id', caseId)
+                  .in('status', ['open', 'investigating', 'in_progress', 'retesting', 'fixed']);
 
-                if (createdIssue) {
-                  summary.created_issues++;
+                if (!openBugs || openBugs.length === 0) {
+                  const { count: issueCount } = await admin
+                    .from('issues')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('project_id', project.id);
+                  const nextNum = (issueCount || 0) + 1;
+                  const issueKey = `${project.key}-BUG-${nextNum}`;
+                  const defect = item.defect || item.issue || {};
+                  const { data: createdIssue } = await admin.from('issues').insert({
+                    project_id: project.id,
+                    test_case_id: caseId,
+                    test_run_id: testRun.id,
+                    issue_key: issueKey,
+                    title: defect.title || `[Defect] ${testTitle} verification failed`,
+                    description:
+                      defect.description ||
+                      runParam.actual_result ||
+                      'Automated execution failure detected during AI agent verification.',
+                    severity: defect.severity || item.severity || 'major',
+                    priority: defect.priority || item.priority || 'high',
+                    status: defect.status || 'open',
+                    root_cause: defect.root_cause || null,
+                    fix_description: defect.fix_description || null,
+                    related_commit: runParam.commit_sha || null,
+                  }).select('id').single();
+
+                  if (createdIssue) {
+                    summary.created_issues++;
+                    await admin.from('issue_history').insert({
+                      issue_id: createdIssue.id,
+                      old_status: null,
+                      new_status: 'open',
+                      comment: `Auto-created defect from failing run: ${runParam.actual_result || 'Execution failed'}`,
+                    });
+                  }
                 }
               }
 
@@ -904,7 +976,7 @@ export async function POST(
                 .select('*', { count: 'exact', head: true })
                 .eq('project_id', project.id);
               const nextNum = (issueCount || 0) + 1;
-              const issueKey = `BUG-${project.key}-${String(nextNum).padStart(3, '0')}`;
+              const issueKey = `${project.key}-BUG-${nextNum}`;
 
               const defect = r.defect || r.issue || {};
               const { data: createdIssue } = await admin
@@ -944,16 +1016,12 @@ export async function POST(
     // 9. Process Retests
     if (Array.isArray(retests) && retests.length > 0) {
       for (const ret of retests) {
+        const foundIssue = await findExistingIssue(ret.issue_key || ret.issue_id || ret.issue);
         const targetCase = findExistingCase(ret);
-        let targetIssueId = ret.issue_id || null;
-        if (!targetIssueId && ret.issue_key) {
-          const { data: fIssue } = await admin.from('issues').select('id').ilike('issue_key', ret.issue_key).maybeSingle();
-          if (fIssue) targetIssueId = fIssue.id;
-        }
+        const caseId = targetCase?.id || foundIssue?.test_case_id || null;
 
-        const caseId = targetCase?.id || null;
+        const status = ret.status || 'pass';
         if (caseId) {
-          const status = ret.status || 'pass';
           const { data: newRun } = await admin.from('test_runs').insert({
             project_id: project.id,
             test_case_id: caseId,
@@ -965,11 +1033,27 @@ export async function POST(
 
           if (newRun) {
             summary.created_runs++;
-            if (status === 'pass' && targetIssueId) {
-              await admin.from('issues').update({ status: 'closed', resolution: ret.actual_result || 'Retest passed', updated_at: new Date().toISOString() }).eq('id', targetIssueId);
-              summary.resolved_issues++;
-            }
           }
+        }
+
+        if (foundIssue) {
+          const newStatus = status === 'pass' ? 'closed' : 'retesting';
+          await admin.from('issues').update({
+            status: newStatus,
+            resolution: status === 'pass' ? (ret.actual_result || 'Retest passed verification') : foundIssue.resolution,
+            updated_at: new Date().toISOString(),
+          }).eq('id', foundIssue.id);
+
+          if (status === 'pass') {
+            summary.resolved_issues++;
+          }
+
+          await admin.from('issue_history').insert({
+            issue_id: foundIssue.id,
+            old_status: foundIssue.status,
+            new_status: newStatus,
+            comment: ret.actual_result || (status === 'pass' ? 'Retest passed verification' : 'Retest failed verification'),
+          });
         }
       }
     }
@@ -978,7 +1062,7 @@ export async function POST(
     if (Array.isArray(rawIssues) && rawIssues.length > 0) {
       for (let idx = 0; idx < rawIssues.length; idx++) {
         const iss = rawIssues[idx];
-        const issKey = iss.key || iss.issue_key || `BUG-${project.key}-${Date.now().toString().slice(-4)}${idx}`;
+        const issKey = iss.key || iss.issue_key || `${project.key}-BUG-${Date.now().toString().slice(-4)}${idx}`;
         let normalizedStatus = (iss.status || 'open').toLowerCase();
         if (normalizedStatus === 'resolved') normalizedStatus = 'closed';
         if (!['open', 'investigating', 'in_progress', 'fixed', 'retesting', 'closed', 'rejected', 'wont_fix'].includes(normalizedStatus)) {
@@ -1012,6 +1096,13 @@ export async function POST(
           } else {
             summary.created_issues++;
           }
+
+          await admin.from('issue_history').insert({
+            issue_id: createdIssue.id,
+            old_status: null,
+            new_status: normalizedStatus,
+            comment: iss.description || 'Issue registered via agent sync',
+          });
         }
       }
     }
@@ -1019,15 +1110,12 @@ export async function POST(
     // 11. Handle delete_issues
     if (Array.isArray(deleteIssues) && deleteIssues.length > 0) {
       for (const issTarget of deleteIssues) {
-        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(issTarget);
-        let q = admin.from('issues').delete().eq('project_id', project.id);
-        if (isUuid) {
-          q = q.eq('id', issTarget);
-        } else {
-          q = q.ilike('issue_key', issTarget);
+        const found = await findExistingIssue(issTarget);
+        if (found) {
+          await admin.from('issue_history').delete().eq('issue_id', found.id);
+          const { error: delErr } = await admin.from('issues').delete().eq('id', found.id);
+          if (!delErr) summary.deleted_issues++;
         }
-        const { error: delErr } = await q;
-        if (!delErr) summary.deleted_issues++;
       }
     }
 
@@ -1040,22 +1128,21 @@ export async function POST(
 
     if (resolvedKeysOrIds.length > 0) {
       for (const item of resolvedKeysOrIds) {
-        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item);
-        let q = admin.from('issues').update({
-          status: 'closed',
-          resolution: 'Marked resolved by AI Agent sync',
-          updated_at: new Date().toISOString(),
-        }).eq('project_id', project.id);
+        const found = await findExistingIssue(item);
+        if (found) {
+          await admin.from('issues').update({
+            status: 'closed',
+            resolution: 'Marked resolved by AI Agent sync',
+            updated_at: new Date().toISOString(),
+          }).eq('id', found.id);
+          summary.resolved_issues++;
 
-        if (isUuid) {
-          q = q.eq('id', item);
-        } else {
-          q = q.ilike('issue_key', item);
-        }
-
-        const { data: updated } = await q.select('id, status');
-        if (updated && updated.length > 0) {
-          summary.resolved_issues += updated.length;
+          await admin.from('issue_history').insert({
+            issue_id: found.id,
+            old_status: found.status,
+            new_status: 'closed',
+            comment: 'Marked resolved by AI Agent sync',
+          });
         }
       }
     }
@@ -1063,17 +1150,13 @@ export async function POST(
     // 13. Add comments / notes to existing issues
     if (Array.isArray(rawComments) && rawComments.length > 0) {
       for (const c of rawComments) {
-        const issueKey = c.issue_key || c.key;
-        let issueId = c.issue_id || null;
-        if (!issueId && issueKey) {
-          const { data: found } = await admin.from('issues').select('id').ilike('issue_key', issueKey).eq('project_id', project.id).maybeSingle();
-          if (found) issueId = found.id;
-        }
-        if (issueId && c.comment) {
+        const target = c.issue_key || c.key || c.issue_id || c.id;
+        const found = await findExistingIssue(target);
+        if (found && c.comment) {
           await admin.from('issue_history').insert({
-            issue_id: issueId,
-            old_status: null,
-            new_status: null,
+            issue_id: found.id,
+            old_status: found.status,
+            new_status: found.status, // Must never be null
             comment: c.comment,
           });
         }
@@ -1083,36 +1166,79 @@ export async function POST(
     // 14. Patch / update existing issues status or fields
     if (Array.isArray(updateIssues) && updateIssues.length > 0) {
       for (const upd of updateIssues) {
-        const issueKey = upd.issue_key || upd.key;
-        let issueId = upd.issue_id || upd.id || null;
-        if (!issueId && issueKey) {
-          const { data: found } = await admin.from('issues').select('id, status').ilike('issue_key', issueKey).eq('project_id', project.id).maybeSingle();
-          if (found) issueId = found.id;
-        }
-        if (!issueId) continue;
+        const target = upd.issue_key || upd.key || upd.issue_id || upd.id;
+        const found = await findExistingIssue(target);
+        if (!found) continue;
+
+        let newStatus = upd.status ? String(upd.status).toLowerCase().trim() : found.status;
+        if (newStatus === 'resolved') newStatus = 'closed';
 
         const patch: any = { updated_at: new Date().toISOString() };
-        if (upd.status) patch.status = upd.status;
+        if (upd.status) patch.status = newStatus;
         if (upd.severity) patch.severity = upd.severity;
         if (upd.priority) patch.priority = upd.priority;
         if (upd.fix_description) patch.fix_description = upd.fix_description;
         if (upd.root_cause) patch.root_cause = upd.root_cause;
         if (upd.resolution) patch.resolution = upd.resolution;
+        if (newStatus === 'closed' && !patch.resolution) {
+          patch.resolution = upd.fix_description || upd.comment || 'Resolved by AI Agent';
+        }
 
-        await admin.from('issues').update(patch).eq('id', issueId);
+        await admin.from('issues').update(patch).eq('id', found.id);
 
-        if (upd.comment) {
+        if (upd.comment || (upd.status && newStatus !== found.status)) {
           await admin.from('issue_history').insert({
-            issue_id: issueId,
-            old_status: null,
-            new_status: upd.status || null,
-            comment: upd.comment,
+            issue_id: found.id,
+            old_status: found.status,
+            new_status: newStatus, // Must never be null
+            comment: upd.comment || `Status updated to ${newStatus}`,
           });
         }
       }
     }
 
-    // 15. Quality Sign-Offs
+    // 15. Handle delete_suites
+    if (Array.isArray(deleteSuites) && deleteSuites.length > 0) {
+      for (const sTarget of deleteSuites) {
+        if (!sTarget) continue;
+        const sStr = (typeof sTarget === 'object' ? sTarget.name || sTarget.id : String(sTarget)).trim();
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sStr);
+        let q = admin.from('test_suites').select('id').eq('project_id', project.id);
+        if (isUuid) q = q.eq('id', sStr);
+        else q = q.ilike('name', sStr);
+        const { data: matchedSuites } = await q;
+        if (matchedSuites && matchedSuites.length > 0) {
+          for (const s of matchedSuites) {
+            await admin.from('test_cases').update({ suite_id: null }).eq('suite_id', s.id);
+            await admin.from('test_suites').delete().eq('id', s.id);
+          }
+        }
+      }
+    }
+
+    // 16. Process topLevelEvidence
+    if (Array.isArray(topLevelEvidence) && topLevelEvidence.length > 0) {
+      for (const ev of topLevelEvidence) {
+        if (!ev) continue;
+        let targetCaseId: string | null = null;
+        if (ev.test_case_id || ev.target || ev.case || ev.key) {
+          const matched = findExistingCase(ev);
+          if (matched) targetCaseId = matched.id;
+        }
+        await admin.from('evidence').insert({
+          project_id: project.id,
+          test_case_id: targetCaseId,
+          original_file_name: ev.file_name || ev.original_file_name || 'artifact.log',
+          file_path: ev.file_path || `vault/${project.key}/${Date.now()}-${ev.file_name || 'artifact.log'}`,
+          file_type: ev.file_type || 'text/plain',
+          file_size: ev.file_size || ev.size || 1024,
+          description: ev.description || 'Top-level verification evidence attached by AI agent',
+        });
+        summary.attached_evidence++;
+      }
+    }
+
+    // 17. Quality Sign-Offs
     const allSignoffs = [
       ...(singleSignoffParam ? [singleSignoffParam] : []),
       ...(Array.isArray(multiSignoffsParam) ? multiSignoffsParam : []),

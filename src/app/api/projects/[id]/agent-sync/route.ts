@@ -687,7 +687,11 @@ export async function POST(
           const updateFields: any = { updated_at: new Date().toISOString() };
           if (item.title !== undefined) updateFields.title = item.title;
           if (item.key !== undefined) updateFields.key = item.key;
-          if (caseSuiteId !== undefined) updateFields.suite_id = caseSuiteId;
+          if (item.suite !== undefined) {
+            updateFields.suite_id = caseSuiteId;
+          } else if (defaultSuiteId !== null) {
+            updateFields.suite_id = defaultSuiteId;
+          }
           if (item.description !== undefined) updateFields.description = item.description;
           if (item.priority !== undefined) updateFields.priority = item.priority;
           if (item.severity !== undefined) updateFields.severity = item.severity;
@@ -791,7 +795,7 @@ export async function POST(
           // Execution Run Recording on this test
           const runParam = item.run || item.execute || (item.run_status ? { status: item.run_status } : null);
           if (runParam) {
-            const runStatus = runParam.status || 'pass';
+            const runStatus = runParam.status || 'in_progress';
             const { data: testRun, error: runErr } = await admin
               .from('test_runs')
               .insert({
@@ -800,7 +804,7 @@ export async function POST(
                 environment_id: caseEnvId,
                 status: runStatus,
                 duration_ms: runParam.duration_ms || 120,
-                actual_result: runParam.actual_result || (runStatus === 'pass' ? 'Verification passed successfully' : 'Execution failed'),
+                actual_result: runParam.actual_result || (runStatus === 'pass' ? 'Verification passed successfully' : runStatus === 'fail' ? 'Execution failed' : `Execution status: ${runStatus}`),
                 notes: runParam.notes || 'Executed autonomously via AI Agent test sync',
                 application_version: runParam.version || runParam.application_version || 'v1.0.0-dev',
                 branch: runParam.branch || 'main',

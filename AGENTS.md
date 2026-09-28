@@ -94,8 +94,10 @@ If MCP is not active in your current session, use the REST endpoints:
 
 ### 1. After writing or modifying features:
 1. Generate or update corresponding test cases in Test Manager with explicit test steps.
-2. Run your local test command (e.g. `npm test`).
-3. Record the execution run (`status: "pass"` or `"fail"`).
+2. Run your local test command (e.g. `npm test` or dedicated verification script).
+3. Record the execution run:
+   - **ONLY** record `status: "pass"` if the test was executed with 100% success and 0 errors, OR if the user explicitly confirmed it.
+   - If the code has not yet been executed, leave the test case as `"untested"` or run status as `"in_progress"`. **NEVER assume a pass!**
 
 ### 2. When a test fails:
 1. Log the test run as `"fail"` with duration and error traces.
@@ -112,3 +114,20 @@ If MCP is not active in your current session, use the REST endpoints:
 1. Run `tm_get_project_tree({ filter_run_status: "fail" })` to check for open failures.
 2. Run `tm_get_coverage` to verify pass rate.
 3. If all gates pass, submit `tm_create_signoff` with `decision: "approved"`.
+
+---
+
+## 3. ⚠️ Critical QA Discipline: Zero-Assumption "Pass" Rule
+
+**NEVER mark a test run or bug retest as `pass` based on code inspection, optimism, or assumption.**
+Prematurely declaring a `pass` conceals bugs, ruins test suite integrity, and creates false confidence.
+
+### The Golden Verification Protocol:
+An AI agent is strictly permitted to record `status: "pass"` **ONLY** when one of these two conditions is met:
+1. **Concrete Independent Execution:** The agent executed concrete test commands (e.g. `npm test`, automated test suite, CLI commands, HTTP request verification) and observed 100% success with zero errors.
+2. **Explicit User Confirmation:** The human user explicitly tested the feature/fix and told the agent it works (e.g. "it works", "it's passing now").
+
+### Untested Code = Untested Status:
+- If code has been written or modified but the agent has NOT independently run verification tests, newly authored test cases MUST remain `untested` (or run status `in_progress`), **NEVER `pass`**.
+- When verifying bug fixes (`tm_verify_retest` or `tm_update_issue_status`), NEVER resolve or mark pass without running a retest that proves the failure condition is gone.
+

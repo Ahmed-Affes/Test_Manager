@@ -127,15 +127,19 @@ const TOOLS = [
   },
   {
     name: 'tm_record_test_run',
-    description: 'Record an execution run for a test case (pass, fail, blocked, or skipped) with duration, actual results, and git metadata.',
+    description: 'Record an execution run for a test case (pass, fail, blocked, or skipped). STRICT QA RULE: NEVER set status to "pass" unless you independently executed concrete verification commands and observed 100% success, OR the human user explicitly confirmed it works. If not yet verified, do NOT mark pass.',
     inputSchema: {
       type: 'object',
       properties: {
         projectKey: { type: 'string', description: 'Project key' },
         target: { type: 'string', description: 'Target test: 1-based index (e.g. "1"), "first", or test key (e.g. "MORPH-001")' },
-        status: { type: 'string', enum: ['pass', 'fail', 'blocked', 'skipped'], description: 'Outcome of test execution.' },
+        status: {
+          type: 'string',
+          enum: ['pass', 'fail', 'blocked', 'skipped'],
+          description: 'Outcome of test execution. STRICT: Only "pass" if verified by real test execution or explicit user confirmation. Never assume pass!',
+        },
         duration_ms: { type: 'number', description: 'Execution time in milliseconds.' },
-        actual_result: { type: 'string', description: 'Actual observed behavior or error message.' },
+        actual_result: { type: 'string', description: 'Actual observed behavior, assertion output, or error message.' },
         branch: { type: 'string', description: 'Git branch name (e.g. main)' },
         version: { type: 'string', description: 'Application build or version string' },
         commit_sha: { type: 'string', description: 'Git commit SHA' },
@@ -225,14 +229,18 @@ const TOOLS = [
   },
   {
     name: 'tm_verify_retest',
-    description: 'Perform a verification retest for an existing defect. If the retest passes, the defect is automatically marked as fixed and resolved.',
+    description: 'Perform a verification retest for an existing defect. If the retest passes, the defect is automatically marked as fixed and resolved. MANDATORY QA RULE: NEVER set status to "pass" unless you independently executed the retest commands and confirmed 0 errors, OR the user explicitly confirmed the fix works.',
     inputSchema: {
       type: 'object',
       properties: {
         projectKey: { type: 'string', description: 'Project key' },
         issue_key: { type: 'string', description: 'Defect key (e.g. MORPH-BUG-1) or issue ID.' },
-        status: { type: 'string', enum: ['pass', 'fail'], description: 'Verification test result.' },
-        actual_result: { type: 'string', description: 'Verification log or evidence description.' },
+        status: {
+          type: 'string',
+          enum: ['pass', 'fail'],
+          description: 'Verification test result. STRICT: Only "pass" if verified by real test execution or explicit user confirmation. Never assume pass!',
+        },
+        actual_result: { type: 'string', description: 'Verification log, assertion output, or evidence description.' },
         duration_ms: { type: 'number', description: 'Duration of retest in milliseconds.' },
       },
       required: ['issue_key', 'status'],

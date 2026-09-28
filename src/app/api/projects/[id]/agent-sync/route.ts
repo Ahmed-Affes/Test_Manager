@@ -1,6 +1,21 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 
+/** ------------------------------------------------------------------ *
+ *  Agent-Sync API — Authentication helper
+ *  Accepts key via X-Agent-Key header OR ?agent_key= query parameter.
+ *  Set AGENT_API_KEY in your environment to enable auth enforcement.
+ *  When not set, the API remains open (backward compatible).
+ * ------------------------------------------------------------------- */
+function isAuthorized(request: Request): boolean {
+  const requiredKey = process.env.AGENT_API_KEY;
+  if (!requiredKey) return true; // open when env var not configured
+
+  const headerKey = request.headers.get('x-agent-key') || request.headers.get('authorization')?.replace('Bearer ', '');
+  const urlKey = new URL(request.url).searchParams.get('agent_key');
+  return headerKey === requiredKey || urlKey === requiredKey;
+}
+
 /**
  * GET /api/projects/[id]/agent-sync
  * Allows the AI agent to inspect the full project tree:
@@ -10,13 +25,30 @@ import { createAdminClient } from '@/lib/supabase/admin';
  * - All bugs & issues
  * - All execution runs
  * - All test plans / milestones
+ *
+ * Query filters (all optional):
+ *   ?suite=<name>       Filter test cases to a specific suite
+ *   ?status=<status>    Filter test cases by status (active|draft|deprecated)
+ *   ?priority=<p>       Filter test cases by priority (low|medium|high|critical)
+ *   ?run_status=<s>     Filter test cases by latest run status (pass|fail|blocked|untested)
+ *   ?include_coverage=true  Append coverage metrics block
  */
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  if (!isAuthorized(request)) {
+    return NextResponse.json({ error: 'Unauthorized: invalid or missing agent API key' }, { status: 401 });
+  }
+
   try {
     const { id } = await params;
+    const url = new URL(request.url);
+    const filterSuite = url.searchParams.get('suite')?.toLowerCase() || null;
+    const filterStatus = url.searchParams.get('status')?.toLowerCase() || null;
+    const filterPriority = url.searchParams.get('priority')?.toLowerCase() || null;
+    const filterRunStatus = url.searchParams.get('run_status')?.toLowerCase() || null;
+    const includeCoverage = url.searchParams.get('include_coverage') === 'true';
     const admin = createAdminClient();
 
     // 1. Resolve project by UUID or Key (e.g. MORPH)
@@ -87,18 +119,12 @@ export async function GET(
       .eq('project_id', project.id)
       .order('created_at', { ascending: false });
 
-    return NextResponse.json({
-      success: true,
-      project: { id: project.id, key: project.key, name: project.name, description: project.description },
-      counts: {
-        cases: cases?.length || 0,
-        suites: suites?.length || 0,
-        environments: environments?.length || 0,
-        issues: issues?.length || 0,
-        runs: runs?.length || 0,
-        plans: plans?.length || 0,
-      },
-      test_cases: (cases || []).map((c, idx) => ({
+    // Map and enrich test cases
+    let mappedCases = (cases || []).map((c, idx) => {
+      const latestRun = c.runs && c.runs.length > 0
+        ? [...c.runs].sort((a: any, b: any) => (b.run_number || 0) - (a.run_number || 0) || new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
+        : null;
+      return {
         index: idx + 1, // 1-based index: 1 = first test
         id: c.id,
         key: c.key,
@@ -112,16 +138,85 @@ export async function GET(
         suite: c.suite?.name || null,
         suite_id: c.suite_id,
         steps: (c.steps || []).sort((a: any, b: any) => a.step_number - b.step_number),
-        latest_run: c.runs && c.runs.length > 0
-          ? [...c.runs].sort((a: any, b: any) => (b.run_number || 0) - (a.run_number || 0) || new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
-          : null,
-      })),
+        latest_run: latestRun,
+        latest_run_status: latestRun?.status || 'untested',
+      };
+    });
+
+    // Apply optional filters
+    if (filterSuite) {
+      mappedCases = mappedCases.filter((c) => (c.suite || '').toLowerCase() === filterSuite);
+    }
+    if (filterStatus) {
+      mappedCases = mappedCases.filter((c) => (c.status || '').toLowerCase() === filterStatus);
+    }
+    if (filterPriority) {
+      mappedCases = mappedCases.filter((c) => (c.priority || '').toLowerCase() === filterPriority);
+    }
+    if (filterRunStatus) {
+      mappedCases = mappedCases.filter((c) => c.latest_run_status === filterRunStatus);
+    }
+
+    // Coverage metrics
+    const totalCases = (cases || []).length;
+    const passCount = (cases || []).filter((c) => {
+      const r = c.runs && c.runs.length > 0
+        ? [...c.runs].sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
+        : null;
+      return r?.status === 'pass';
+    }).length;
+    const failCount = (cases || []).filter((c) => {
+      const r = c.runs && c.runs.length > 0
+        ? [...c.runs].sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
+        : null;
+      return r?.status === 'fail';
+    }).length;
+    const blockedCount = (cases || []).filter((c) => {
+      const r = c.runs && c.runs.length > 0
+        ? [...c.runs].sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
+        : null;
+      return r?.status === 'blocked';
+    }).length;
+    const untestedCount = totalCases - passCount - failCount - blockedCount;
+    const openIssueCount = (issues || []).filter((i) => i.status !== 'closed' && i.status !== 'resolved').length;
+
+    const coverageMetrics = {
+      total: totalCases,
+      pass: passCount,
+      fail: failCount,
+      blocked: blockedCount,
+      untested: untestedCount,
+      pass_rate: totalCases > 0 ? Math.round((passCount / totalCases) * 100) : 0,
+      execution_rate: totalCases > 0 ? Math.round(((totalCases - untestedCount) / totalCases) * 100) : 0,
+      open_bugs: openIssueCount,
+    };
+
+    const response: any = {
+      success: true,
+      project: { id: project.id, key: project.key, name: project.name, description: project.description },
+      counts: {
+        cases: cases?.length || 0,
+        suites: suites?.length || 0,
+        environments: environments?.length || 0,
+        issues: issues?.length || 0,
+        runs: runs?.length || 0,
+        plans: plans?.length || 0,
+      },
+      coverage: coverageMetrics,
+      test_cases: mappedCases,
       test_suites: suites || [],
       environments: environments || [],
       issues: issues || [],
       test_runs: runs || [],
       test_plans: plans || [],
-    });
+    };
+
+    // Only include verbose coverage block when explicitly requested
+    if (!includeCoverage) {
+      delete response.test_runs; // omit bulky runs list by default to save tokens
+    }
+
+    return NextResponse.json(response);
   } catch (err: any) {
     console.error('Agent GET error:', err);
     return NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 });
@@ -142,6 +237,10 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  if (!isAuthorized(request)) {
+    return NextResponse.json({ error: 'Unauthorized: invalid or missing agent API key' }, { status: 401 });
+  }
+
   try {
     const { id } = await params;
     const body = await request.json();
@@ -188,6 +287,8 @@ export async function POST(
     const deleteIssues: any[] = body.delete_issues || body.delete_bugs || [];
     const deleteSuites: any[] = body.delete_suites || [];
     const retests: any[] = body.retests || (body.retest ? [body.retest] : []);
+    const rawComments: any[] = body.comments || body.notes || [];
+    const updateIssues: any[] = body.update_issues || body.patch_issues || [];
 
     // Support autonomous project wipe / fresh start if requested
     if (reset || wipe || clear) {
@@ -959,7 +1060,59 @@ export async function POST(
       }
     }
 
-    // 13. Quality Sign-Offs
+    // 13. Add comments / notes to existing issues
+    if (Array.isArray(rawComments) && rawComments.length > 0) {
+      for (const c of rawComments) {
+        const issueKey = c.issue_key || c.key;
+        let issueId = c.issue_id || null;
+        if (!issueId && issueKey) {
+          const { data: found } = await admin.from('issues').select('id').ilike('issue_key', issueKey).eq('project_id', project.id).maybeSingle();
+          if (found) issueId = found.id;
+        }
+        if (issueId && c.comment) {
+          await admin.from('issue_history').insert({
+            issue_id: issueId,
+            old_status: null,
+            new_status: null,
+            comment: c.comment,
+          });
+        }
+      }
+    }
+
+    // 14. Patch / update existing issues status or fields
+    if (Array.isArray(updateIssues) && updateIssues.length > 0) {
+      for (const upd of updateIssues) {
+        const issueKey = upd.issue_key || upd.key;
+        let issueId = upd.issue_id || upd.id || null;
+        if (!issueId && issueKey) {
+          const { data: found } = await admin.from('issues').select('id, status').ilike('issue_key', issueKey).eq('project_id', project.id).maybeSingle();
+          if (found) issueId = found.id;
+        }
+        if (!issueId) continue;
+
+        const patch: any = { updated_at: new Date().toISOString() };
+        if (upd.status) patch.status = upd.status;
+        if (upd.severity) patch.severity = upd.severity;
+        if (upd.priority) patch.priority = upd.priority;
+        if (upd.fix_description) patch.fix_description = upd.fix_description;
+        if (upd.root_cause) patch.root_cause = upd.root_cause;
+        if (upd.resolution) patch.resolution = upd.resolution;
+
+        await admin.from('issues').update(patch).eq('id', issueId);
+
+        if (upd.comment) {
+          await admin.from('issue_history').insert({
+            issue_id: issueId,
+            old_status: null,
+            new_status: upd.status || null,
+            comment: upd.comment,
+          });
+        }
+      }
+    }
+
+    // 15. Quality Sign-Offs
     const allSignoffs = [
       ...(singleSignoffParam ? [singleSignoffParam] : []),
       ...(Array.isArray(multiSignoffsParam) ? multiSignoffsParam : []),

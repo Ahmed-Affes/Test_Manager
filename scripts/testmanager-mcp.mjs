@@ -1,27 +1,78 @@
 #!/usr/bin/env node
 
 /**
- * Test Manager — Official Model Context Protocol (MCP) Server
+ * Test Manager — Official Model Context Protocol (MCP) Server v2.0
  * Allows Cursor, Claude, Antigravity, and other AI agents to interact with
  * Test Manager using native, type-safe tools over standard stdio JSON-RPC.
+ *
+ * New in v2.0:
+ *  - API key authentication (AGENT_API_KEY env var)
+ *  - tm_delete_test: delete outdated test cases
+ *  - tm_add_comment: add notes/comments to bug reports
+ *  - tm_get_issue: fetch a single bug by key
+ *  - tm_update_issue_status: patch status, severity, priority on an issue
+ *  - tm_list_environments: list all tracked test environments
+ *  - tm_get_coverage: get pass/fail/untested coverage metrics
+ *  - Filtering support on tm_get_project_tree (suite, status, priority, run_status)
  */
 
 import readline from 'readline';
 
 const API_BASE = process.env.TEST_MANAGER_API_URL || 'https://testmanger.vercel.app';
 const DEFAULT_PROJECT_KEY = process.env.TEST_MANAGER_PROJECT_KEY || 'MORPH';
+const AGENT_API_KEY = process.env.AGENT_API_KEY || null;
+
+/** Build request headers including optional auth key */
+function buildHeaders() {
+  const headers = { 'Content-Type': 'application/json' };
+  if (AGENT_API_KEY) headers['X-Agent-Key'] = AGENT_API_KEY;
+  return headers;
+}
 
 const TOOLS = [
   {
     name: 'tm_get_project_tree',
-    description: 'Inspect the full Test Manager project tree: all test suites, test cases with 1-based index numbers, latest execution runs, open defects, and environments.',
+    description: 'Inspect the full Test Manager project tree: all test suites, test cases with 1-based index numbers, coverage metrics, open defects, and environments. Supports optional filters.',
     inputSchema: {
       type: 'object',
       properties: {
         projectKey: {
           type: 'string',
-          description: 'The project key (e.g. MORPH, AUTH, CORE). Defaults to environment or active project.',
+          description: 'The project key (e.g. MORPH). Defaults to environment or active project.',
         },
+        filter_suite: {
+          type: 'string',
+          description: 'Filter test cases to a specific suite name.',
+        },
+        filter_status: {
+          type: 'string',
+          enum: ['active', 'draft', 'deprecated'],
+          description: 'Filter test cases by their status.',
+        },
+        filter_priority: {
+          type: 'string',
+          enum: ['low', 'medium', 'high', 'critical'],
+          description: 'Filter test cases by priority.',
+        },
+        filter_run_status: {
+          type: 'string',
+          enum: ['pass', 'fail', 'blocked', 'untested'],
+          description: 'Filter test cases by the status of their latest run.',
+        },
+        include_coverage: {
+          type: 'boolean',
+          description: 'When true, includes full run history in the response. Default false (coverage metrics always included).',
+        },
+      },
+    },
+  },
+  {
+    name: 'tm_get_coverage',
+    description: 'Get a quick coverage summary for the project: pass rate, execution rate, fail count, open bugs — without returning all test case data.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectKey: { type: 'string', description: 'Project key (e.g. MORPH)' },
       },
     },
   },
@@ -60,6 +111,18 @@ const TOOLS = [
         },
       },
       required: ['title'],
+    },
+  },
+  {
+    name: 'tm_delete_test',
+    description: 'Delete a test case from Test Manager by key, 1-based index, or title. Also cleans up associated steps, runs, and issues.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectKey: { type: 'string', description: 'Project key (e.g. MORPH)' },
+        target: { type: 'string', description: 'Test to delete: a 1-based index like "3", a key like "MORPH-003", or "first" / "last".' },
+      },
+      required: ['target'],
     },
   },
   {
@@ -103,6 +166,64 @@ const TOOLS = [
     },
   },
   {
+    name: 'tm_get_issue',
+    description: 'Fetch a single bug/defect by its issue key (e.g. MORPH-BUG-001). Returns full details including status, severity, root cause, and history.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectKey: { type: 'string', description: 'Project key' },
+        issue_key: { type: 'string', description: 'The issue key to look up (e.g. MORPH-BUG-001).' },
+      },
+      required: ['issue_key'],
+    },
+  },
+  {
+    name: 'tm_update_issue_status',
+    description: 'Update the status, severity, priority, root cause, or resolution of an existing bug. Can also add a comment explaining the change.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectKey: { type: 'string', description: 'Project key' },
+        issue_key: { type: 'string', description: 'Issue key to update (e.g. MORPH-BUG-001).' },
+        status: {
+          type: 'string',
+          enum: ['open', 'investigating', 'in_progress', 'fixed', 'retesting', 'closed', 'rejected', 'wont_fix'],
+          description: 'New status for the issue.',
+        },
+        severity: { type: 'string', enum: ['minor', 'major', 'critical', 'blocker'] },
+        priority: { type: 'string', enum: ['low', 'medium', 'high', 'critical'] },
+        fix_description: { type: 'string', description: 'Description of the applied fix.' },
+        root_cause: { type: 'string', description: 'Updated root cause analysis.' },
+        resolution: { type: 'string', description: 'Resolution notes.' },
+        comment: { type: 'string', description: 'A comment or note to add to the issue history.' },
+      },
+      required: ['issue_key'],
+    },
+  },
+  {
+    name: 'tm_add_comment',
+    description: 'Add a comment or investigation note to an existing bug/issue without changing its status.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectKey: { type: 'string', description: 'Project key' },
+        issue_key: { type: 'string', description: 'Issue key (e.g. MORPH-BUG-001).' },
+        comment: { type: 'string', description: 'The comment text to add to the issue timeline.' },
+      },
+      required: ['issue_key', 'comment'],
+    },
+  },
+  {
+    name: 'tm_list_environments',
+    description: 'List all test environments configured for the project (OS, CPU, RAM, runtime info).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectKey: { type: 'string', description: 'Project key' },
+      },
+    },
+  },
+  {
     name: 'tm_verify_retest',
     description: 'Perform a verification retest for an existing defect. If the retest passes, the defect is automatically marked as fixed and resolved.',
     inputSchema: {
@@ -138,7 +259,7 @@ async function callAgentSyncApi(projectKey, payload) {
   const url = `${API_BASE}/api/projects/${pKey}/agent-sync`;
   const res = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: buildHeaders(),
     body: JSON.stringify(payload),
   });
   if (!res.ok) {
@@ -148,10 +269,17 @@ async function callAgentSyncApi(projectKey, payload) {
   return await res.json();
 }
 
-async function getProjectTree(projectKey) {
+async function getProjectTree(projectKey, filters = {}) {
   const pKey = projectKey || DEFAULT_PROJECT_KEY;
-  const url = `${API_BASE}/api/projects/${pKey}/agent-sync`;
-  const res = await fetch(url);
+  const qp = new URLSearchParams();
+  if (filters.filter_suite) qp.set('suite', filters.filter_suite);
+  if (filters.filter_status) qp.set('status', filters.filter_status);
+  if (filters.filter_priority) qp.set('priority', filters.filter_priority);
+  if (filters.filter_run_status) qp.set('run_status', filters.filter_run_status);
+  if (filters.include_coverage) qp.set('include_coverage', 'true');
+
+  const url = `${API_BASE}/api/projects/${pKey}/agent-sync${qp.toString() ? '?' + qp.toString() : ''}`;
+  const res = await fetch(url, { headers: buildHeaders() });
   if (!res.ok) {
     const errorText = await res.text();
     throw new Error(`Test Manager API error (${res.status}): ${errorText}`);
@@ -164,23 +292,45 @@ async function handleToolCall(name, args) {
 
   switch (name) {
     case 'tm_get_project_tree': {
-      const data = await getProjectTree(projectKey);
+      const data = await getProjectTree(projectKey, {
+        filter_suite: args.filter_suite,
+        filter_status: args.filter_status,
+        filter_priority: args.filter_priority,
+        filter_run_status: args.filter_run_status,
+        include_coverage: args.include_coverage,
+      });
+
       const testSummary = (data.test_cases || []).map((tc) => ({
         index: tc.index,
         key: tc.key,
         title: tc.title,
-        suite: tc.suite?.name || 'Unassigned',
+        suite: tc.suite || 'Unassigned',
         priority: tc.priority,
         severity: tc.severity,
-        latest_run: tc.runs?.[0]?.status || 'untested',
+        latest_run_status: tc.latest_run_status || 'untested',
       }));
 
       return {
         project: data.project,
+        coverage: data.coverage,
         total_test_cases: (data.test_cases || []).length,
-        total_suites: (data.suites || []).length,
+        total_suites: (data.test_suites || []).length,
         open_issues: (data.issues || []).filter((i) => i.status !== 'closed' && i.status !== 'resolved').length,
         test_cases_overview: testSummary,
+        issues_overview: (data.issues || []).map((i) => ({
+          key: i.issue_key,
+          title: i.title,
+          status: i.status,
+          severity: i.severity,
+        })),
+      };
+    }
+
+    case 'tm_get_coverage': {
+      const data = await getProjectTree(projectKey);
+      return {
+        project: data.project?.key,
+        coverage: data.coverage,
       };
     }
 
@@ -195,6 +345,14 @@ async function handleToolCall(name, args) {
 
       const res = await callAgentSyncApi(projectKey, payload);
       return { success: true, summary: res.summary, result: res };
+    }
+
+    case 'tm_delete_test': {
+      const payload = {
+        delete_tests: [args.target],
+      };
+      const res = await callAgentSyncApi(projectKey, payload);
+      return { success: true, summary: res.summary };
     }
 
     case 'tm_record_test_run': {
@@ -248,6 +406,59 @@ async function handleToolCall(name, args) {
 
       const res = await callAgentSyncApi(projectKey, payload);
       return { success: true, summary: res.summary, result: res };
+    }
+
+    case 'tm_get_issue': {
+      // Fetch the project tree and filter to the single issue
+      const data = await getProjectTree(projectKey);
+      const found = (data.issues || []).find(
+        (i) => i.issue_key?.toLowerCase() === String(args.issue_key).toLowerCase()
+      );
+      if (!found) {
+        return { success: false, error: `Issue not found: ${args.issue_key}` };
+      }
+      return { success: true, issue: found };
+    }
+
+    case 'tm_update_issue_status': {
+      const payload = {
+        update_issues: [
+          {
+            issue_key: args.issue_key,
+            status: args.status,
+            severity: args.severity,
+            priority: args.priority,
+            fix_description: args.fix_description,
+            root_cause: args.root_cause,
+            resolution: args.resolution,
+            comment: args.comment,
+          },
+        ],
+      };
+      const res = await callAgentSyncApi(projectKey, payload);
+      return { success: true, summary: res.summary };
+    }
+
+    case 'tm_add_comment': {
+      const payload = {
+        comments: [
+          {
+            issue_key: args.issue_key,
+            comment: args.comment,
+          },
+        ],
+      };
+      const res = await callAgentSyncApi(projectKey, payload);
+      return { success: true, summary: res.summary };
+    }
+
+    case 'tm_list_environments': {
+      const data = await getProjectTree(projectKey);
+      return {
+        project: data.project?.key,
+        environments: data.environments || [],
+        total: (data.environments || []).length,
+      };
     }
 
     case 'tm_verify_retest': {
@@ -318,7 +529,7 @@ rl.on('line', async (line) => {
         capabilities: { tools: {} },
         serverInfo: {
           name: 'testmanager-mcp',
-          version: '1.0.0',
+          version: '2.0.0',
         },
       });
     } else if (method === 'notifications/initialized') {
